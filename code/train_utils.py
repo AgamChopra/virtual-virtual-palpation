@@ -82,18 +82,20 @@ class Trainer(nn.Module):
             plt.xlabel("Epochs")
             plt.ylabel("Average Error")
             plt.legend()
+
             if HYAK:
                 plt.savefig(os.path.join(self.checkpoint_path, 'errors.png'))
             else:
                 plt.show()
 
     @torch.no_grad()
-    def validate(self, dataloader):
+    def validate(self, dataloader=None):
         errors = []
         self.model.eval()
-        data = dataloader
+        data = dataloader if dataloader is not None else self.data
+
         for _ in range(len(data.pid)):
-            x = self.data.load_batch().type(torch.float)
+            x = data.load_batch().type(torch.float)
             input_signal = x[0].to(self.device).detach()
             real_output_signal = x[1].to(self.device).detach()
             fake_output_signal = self.model(input_signal)
@@ -104,4 +106,5 @@ class Trainer(nn.Module):
                 pix_error(real_output_signal[0].cpu(),
                           fake_output_signal[0].cpu()))
             print('Error=', errors[-1])
+
         print('Avg. prediction error=', sum(errors)/len(errors))
