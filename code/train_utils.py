@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Created on October 2023
 @author: Agamdeep Chopra
@@ -22,8 +21,9 @@ from utils import show_images, pix_error
 # Dataloader must return a tuple (batch of input, batch of ground truth)
 class Trainer(nn.Module):
     def __init__(self, checkpoint_path, dataloader, CH_IN=2, CH_OUT=1, n=1,
-                 optimizer=torch.optim.AdamW, criterion=[nn.MSELoss()],
-                 lambdas=[1.], learning_rate=1E-4, device='cuda'):
+                 optimizer=torch.optim.AdamW, learning_rate=1E-4,
+                 criterion=[nn.MSELoss(), nn.L1Loss()],
+                 lambdas=[0.5, 0.5], device='cuda'):
         super(Trainer, self).__init__()
         self.checkpoint_path = checkpoint_path
         self.device = device
@@ -59,7 +59,7 @@ class Trainer(nn.Module):
 
         return error.item()
 
-    def optimize(self, epochs=200, HYAK=False):
+    def optimize(self, epochs=200, HYAK=True):
         for eps in range(epochs):
             print(f'Epoch {eps + 1}|{epochs}')
             errors = []
