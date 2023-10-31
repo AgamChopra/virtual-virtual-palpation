@@ -36,8 +36,8 @@ if __name__ == '__main__':
     if mode == 'test':
         infer(path)
     elif mode == 'val':
-        train_dataloader(path, learning_rate=1E-10, epochs=0, hyak=hyak)
+        train_validate(path, learning_rate=1E-10, epochs=0, hyak=hyak)
     elif mode == 'train':
-        train_dataloader(path, learning_rate=lr, epochs=eps, hyak=hyak)
+        train_validate(path, learning_rate=lr, epochs=eps, hyak=hyak)
     else:
         print('Error: {mode} is not implemented!')
