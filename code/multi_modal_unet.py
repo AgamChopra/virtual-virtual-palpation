@@ -12,10 +12,10 @@ from train_utils import Trainer
 from dataloader import train_dataloader, val_dataloader  # Add test dataset
 
 
-def train_validate(path, learning_rate=1E-4, epochs=500, hyak=True):
+def train_validate(path, learning_rate=1E-4, epochs=500, hyak=True, n=4):
     module = Trainer(checkpoint_path=path,
-                     dataloader=train_dataloader(),
-                     learning_rate=learning_rate)
+                     dataloader=train_dataloader(HYAK=hyak),
+                     learning_rate=learning_rate, n=n)
     module.optimize(epochs=epochs, HYAK=hyak)
     module.validate(val_dataloader())
 
@@ -30,7 +30,7 @@ if __name__ == '__main__':
     path = ''
     lr = 1E-4
     eps = 200
-    hyak = True
+    hyak = False
     mode = input('Train(train), Validate(val), or Test(test)')
 
     if mode == 'test':

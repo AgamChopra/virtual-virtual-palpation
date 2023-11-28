@@ -15,7 +15,7 @@ import nibabel as nib
 import torch
 from torchio.transforms import RandomFlip, RandomAffine
 
-from utils import norm
+from utils import norm, pad3d, show_images
 
 
 def rand_augment(x):
@@ -32,9 +32,8 @@ def augment_batch(x):
     return x
 
 
-def get_modality(path, nrm=True, shape=180):
-    image = torch.from_numpy(nib.load(path).get_fdata()).reshape(
-        (1, 1, shape, shape, shape))
+def get_modality(path, nrm=True):
+    image = torch.from_numpy(nib.load(path).get_fdata())[None, None, ...]
     if nrm:
         image = norm(image)
     return image
@@ -45,9 +44,9 @@ def get_modalities(path, idx, nrm=True):
         t1_task = executor.submit(get_modality, os.path.join(
             path, 'T1_' + str(idx) + '.nii'), nrm)
         diff_task = executor.submit(get_modality, os.path.join(
-            path, 'DIFFUSE_' + str(idx) + '.nii'), nrm)
+            path, 'diff_' + str(idx) + '.nii'), nrm)
         mre_task = executor.submit(get_modality, os.path.join(
-            path, 'MRE_' + str(idx) + '.nii'), nrm)
+            path, 'stiff_' + str(idx) + '.nii'), nrm)
 
     t1 = t1_task.result()
     diff = diff_task.result()
@@ -58,7 +57,7 @@ def get_modalities(path, idx, nrm=True):
 
 def load_patient(path, idx, nrm=True):
     t1, diff, mre = get_modalities(path, idx, nrm)
-    out = torch.cat((t1, diff, mre), dim=1)
+    out = pad3d(torch.cat((t1, diff, mre), dim=1), (180, 180, 180))
     return out
 
 
@@ -68,7 +67,7 @@ def load_batch_dataset(path, idx_list):
 
 
 class train_dataloader():
-    def __init__(self, batch=32, max_id=293, post=False,
+    def __init__(self, batch=1, max_id=1, post=False,
                  augment=True, HYAK=True):
         self.augment = augment
         self.max_id = max_id
@@ -78,18 +77,18 @@ class train_dataloader():
         self.Flag = True
         self.post = post
         self.path = '/gscratch/kurtlab/vvp/data/train' if HYAK \
-            else '/home/agam/Documents/datasets/vvp/train'
+            else '/home/agam/Downloads/ME599/train'
 
     def randomize(self):
-        sample_len = self.max_id
-        self.idx = random.sample(range(1, self.max_id + 1), sample_len)
+        sample_len = self.max_id + 1
+        self.idx = random.sample(range(0, self.max_id + 1), sample_len)
 
     def load_batch(self, post=False):
         if self.Flag:  # only runs the first time
             self.randomize()
             self.Flag = False
 
-        max_id = self.max_id - 1
+        max_id = self.max_id
 
         if self.id + self.batch > max_id:
             if self.id < max_id:
@@ -117,7 +116,7 @@ class val_dataloader():
                  pid=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
                       12, 13, 14, 15, 16], batch=1, HYAK=True):
         self.path = '/gscratch/kurtlab/vvp/data/val' if HYAK \
-            else '/home/agam/Documents/datasets/vvp/val'
+            else '/home/agam/Downloads/ME599/val'
         self.pid = pid
         self.id = 0
         self.max_id = len(pid)
@@ -133,3 +132,13 @@ class val_dataloader():
         self.id += self.batch
 
         return (batch_raw[:, 0:2], batch_raw[:, 2:3])
+
+
+if __name__ == '__main__':
+    a = train_dataloader(HYAK=False, post=True)
+    for i in range(100):
+        x = a.load_batch()
+        print(x[0].shape, x[1].shape)
+        show_images(torch.cat(x, dim=1).view(3, 1, 180, 180, 180), 3, 3)
+        if (i+1) % 2 == 0:
+            print('.......................')
