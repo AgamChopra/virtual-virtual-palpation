@@ -23,20 +23,20 @@ class Trainer(nn.Module):
     def __init__(self, checkpoint_path, dataloader, CH_IN=2, CH_OUT=1, n=1,
                  optimizer=torch.optim.AdamW, learning_rate=1E-4,
                  criterion=[nn.MSELoss(), nn.L1Loss()],
-                 lambdas=[0.5, 0.5], device='cuda'):
+                 lambdas=[0.5, 0.5], device='cuda', model=Unet):
         super(Trainer, self).__init__()
         self.checkpoint_path = checkpoint_path
         self.device = device
-        self.model = torch.compile(Unet(CH_IN, CH_OUT, n)).to(device)
+        self.model = torch.compile(model(CH_IN, CH_OUT, n)).to(device)
         try:
             self.model.load_state_dict(torch.load(
                 os.path.join(checkpoint_path, 'autosave.pt')))
         except Exception:
             print('paramerts failed to load from last run')
         self.data = dataloader
-        self.iterations = (int(dataloader.max_id / dataloader.batch_size) +
-                           (dataloader.max_id % dataloader.batch_size > 0))
-        self.optimizer = optimizer(self.model.parameters(), learning_rate)
+        self.iterations = (int((dataloader.max_id + 1) / dataloader.batch) +
+                           ((dataloader.max_id + 1) % dataloader.batch > 0))
+        self.optimizer = optimizer(self.model.parameters(), learning_rate,)
         self.criterion = criterion
         self.lambdas = lambdas
         self.train_error = []
@@ -45,9 +45,9 @@ class Trainer(nn.Module):
         self.model.train()
         self.optimizer.zero_grad()
 
-        x = self.data.load_batch().type(torch.float)
-        input_signal = x[0].to(self.device).detach()
-        real_output_signal = x[1].to(self.device).detach()
+        x = self.data.load_batch()
+        input_signal = x[0].detach().type(torch.float).to(self.device)
+        real_output_signal = x[1].detach().type(torch.float).to(self.device)
 
         fake_output_signal = self.model(input_signal)
 
@@ -82,20 +82,23 @@ class Trainer(nn.Module):
             plt.xlabel("Epochs")
             plt.ylabel("Average Error")
             plt.legend()
+
             if HYAK:
                 plt.savefig(os.path.join(self.checkpoint_path, 'errors.png'))
             else:
                 plt.show()
 
     @torch.no_grad()
-    def validate(self, dataloader):
+    def validate(self, dataloader=None):
         errors = []
         self.model.eval()
-        data = dataloader
+        data = dataloader if dataloader is not None else self.data
+
         for _ in range(len(data.pid)):
-            x = self.data.load_batch().type(torch.float)
-            input_signal = x[0].to(self.device).detach()
-            real_output_signal = x[1].to(self.device).detach()
+            x = data.load_batch()
+            input_signal = x[0].detach().type(torch.float).to(self.device)
+            real_output_signal = x[1].detach().type(
+                torch.float).to(self.device)
             fake_output_signal = self.model(input_signal)
             show_images(torch.stack(
                 (fake_output_signal[0].cpu(), real_output_signal[0].cpu()),
@@ -104,4 +107,5 @@ class Trainer(nn.Module):
                 pix_error(real_output_signal[0].cpu(),
                           fake_output_signal[0].cpu()))
             print('Error=', errors[-1])
+
         print('Avg. prediction error=', sum(errors)/len(errors))
