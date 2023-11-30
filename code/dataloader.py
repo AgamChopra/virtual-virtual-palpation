@@ -67,7 +67,7 @@ def load_batch_dataset(path, idx_list):
 
 
 class train_dataloader():
-    def __init__(self, batch=1, max_id=1, post=False,
+    def __init__(self, batch=1, max_id=3, post=False,
                  augment=True, HYAK=True):
         self.augment = augment
         self.max_id = max_id
@@ -81,7 +81,7 @@ class train_dataloader():
 
     def randomize(self):
         sample_len = self.max_id + 1
-        self.idx = random.sample(range(0, self.max_id + 1), sample_len)
+        self.idx = random.sample(range(0, sample_len), sample_len)
 
     def load_batch(self, post=False):
         if self.Flag:  # only runs the first time
@@ -99,7 +99,7 @@ class train_dataloader():
             self.id = 0
             self.randomize()
             if self.post:
-                print('Dataset re-randomized...')
+                print('Dataset re-randomized...', self.idx)
         else:
             batch_raw = load_batch_dataset(
                 self.path, self.idx[self.id:self.id + self.batch])
@@ -113,10 +113,31 @@ class train_dataloader():
 
 class val_dataloader():
     def __init__(self,
-                 pid=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
-                      12, 13, 14, 15, 16], batch=1, HYAK=True):
+                 pid=[0, 1, 2, 3], batch=1, HYAK=True):
         self.path = '/gscratch/kurtlab/vvp/data/val' if HYAK \
             else '/home/agam/Downloads/ME599/val'
+        self.pid = pid
+        self.id = 0
+        self.max_id = len(pid)
+        self.batch = 1
+
+    def load_batch(self):
+        if self.id >= self.max_id:
+            self.id = 0
+
+        ids = [idx for idx in self.pid[self.id:self.id + self.batch]]
+        batch_raw = load_batch_dataset(self.path, ids)
+
+        self.id += self.batch
+
+        return (batch_raw[:, 0:2], batch_raw[:, 2:3])
+
+
+class test_dataloader():
+    def __init__(self,
+                 pid=[0, 1, 2, 3], batch=1, HYAK=True):
+        self.path = '/gscratch/kurtlab/vvp/data/test' if HYAK \
+            else '/home/agam/Downloads/ME599/test'
         self.pid = pid
         self.id = 0
         self.max_id = len(pid)
@@ -140,5 +161,5 @@ if __name__ == '__main__':
         x = a.load_batch()
         print(x[0].shape, x[1].shape)
         show_images(torch.cat(x, dim=1).view(3, 1, 180, 180, 180), 3, 3)
-        if (i+1) % 2 == 0:
+        if (i+1) % 4 == 0:
             print('.......................')

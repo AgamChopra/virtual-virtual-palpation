@@ -15,9 +15,10 @@ from utils import Block, pad3d
 
 # UNet for training task 1, 2, and 3
 class Unet(nn.Module):
-    def __init__(self, CH_IN=2, CH_OUT=1, n=1):
+    def __init__(self, CH_IN=2, CH_OUT=1, n=1, p=0.3):
         super(Unet, self).__init__()
         print('Model size factor =', int(64/n))
+        self.drop = nn.Dropout3d(p)
         self.layer1 = nn.Sequential(
             nn.Conv3d(CH_IN, int(64/n), 2, 1), nn.ReLU(),
             nn.InstanceNorm3d(int(64/n)))
@@ -65,27 +66,27 @@ class Unet(nn.Module):
             ers' are expected to be on the same device, but found at least two\
                 devices, '%s' and '%s'" % (x[0].device, self.out.weight.device)
         x_ = pad3d(x, (pad2size, pad2size, pad2size))
-        y = self.layer1(x_)
+        y = self.drop(self.layer1(x_))
 
-        y2 = self.layer2(y)
-        y = self.pool2(y2)
+        y2 = self.drop(self.layer2(y))
+        y = self.drop(self.pool2(y2))
 
-        y3 = self.layer3(y)
-        y = self.pool3(y3)
+        y3 = self.drop(self.layer3(y))
+        y = self.drop(self.pool3(y3))
 
-        y4 = self.layer4(y)
-        y = self.pool4(y4)
+        y4 = self.drop(self.layer4(y))
+        y = self.drop(self.pool4(y4))
 
-        y = self.layer5(y)
+        y = self.drop(self.layer5(y))
 
         y = torch.cat((y4, pad3d(y, y4)), dim=1)
-        y = self.layer6(y)
+        y = self.drop(self.layer6(y))
 
         y = torch.cat((y3, pad3d(y, y3)), dim=1)
-        y = self.layer7(y)
+        y = self.drop(self.layer7(y))
 
         y = torch.cat((y2, pad3d(y, y2)), dim=1)
-        y = self.layer8(y)
+        y = self.drop(self.layer8(y))
 
         y = pad3d(y, x)
 

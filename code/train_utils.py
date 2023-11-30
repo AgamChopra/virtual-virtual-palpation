@@ -34,9 +34,9 @@ class Trainer(nn.Module):
         except Exception:
             print('paramerts failed to load from last run')
         self.data = dataloader
-        self.iterations = (int(dataloader.max_id / dataloader.batch) +
-                           (dataloader.max_id % dataloader.batch > 0))
-        self.optimizer = optimizer(self.model.parameters(), learning_rate)
+        self.iterations = (int((dataloader.max_id + 1) / dataloader.batch) +
+                           ((dataloader.max_id + 1) % dataloader.batch > 0))
+        self.optimizer = optimizer(self.model.parameters(), learning_rate,)
         self.criterion = criterion
         self.lambdas = lambdas
         self.train_error = []
@@ -95,9 +95,10 @@ class Trainer(nn.Module):
         data = dataloader if dataloader is not None else self.data
 
         for _ in range(len(data.pid)):
-            x = data.load_batch().type(torch.float)
-            input_signal = x[0].to(self.device).detach()
-            real_output_signal = x[1].to(self.device).detach()
+            x = data.load_batch()
+            input_signal = x[0].detach().type(torch.float).to(self.device)
+            real_output_signal = x[1].detach().type(
+                torch.float).to(self.device)
             fake_output_signal = self.model(input_signal)
             show_images(torch.stack(
                 (fake_output_signal[0].cpu(), real_output_signal[0].cpu()),

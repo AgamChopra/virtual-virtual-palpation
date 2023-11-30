@@ -9,35 +9,36 @@ Created on October 2023
     - PyTorch 2.0 stable documentation @ https://pytorch.org/docs/stable/
 """
 from train_utils import Trainer
-from dataloader import train_dataloader, val_dataloader  # Add test dataset
+from dataloader import train_dataloader, val_dataloader, test_dataloader
 
 
-def train_validate(path, learning_rate=1E-4, epochs=500, hyak=True, n=4):
+def train(path, learning_rate=1E-4, epochs=500, hyak=True, n=4):
     module = Trainer(checkpoint_path=path,
                      dataloader=train_dataloader(HYAK=hyak),
                      learning_rate=learning_rate, n=n)
     module.optimize(epochs=epochs, HYAK=hyak)
-    module.validate(val_dataloader())
+    module.validate(val_dataloader(HYAK=hyak))
 
 
-def infer(path):
-    # Update for test dataset
-    module = Trainer(checkpoint_path=path, dataloader=val_dataloader())
-    module.validate(val_dataloader())
+def infer(path, dataloader, n=4):
+    module = Trainer(checkpoint_path=path,
+                     dataloader=dataloader, n=n)
+    module.validate(dataloader)
 
 
 if __name__ == '__main__':
     path = ''
-    lr = 1E-4
+    lr = 1E-3
     eps = 200
+    n = 4
     hyak = False
     mode = input('Train(train), Validate(val), or Test(test)')
 
     if mode == 'test':
-        infer(path)
+        infer(path, dataloader=test_dataloader(HYAK=hyak), n=n)
     elif mode == 'val':
-        train_validate(path, learning_rate=1E-10, epochs=0, hyak=hyak)
+        infer(path, dataloader=val_dataloader(HYAK=hyak), n=n)
     elif mode == 'train':
-        train_validate(path, learning_rate=lr, epochs=eps, hyak=hyak)
+        train(path, learning_rate=lr, epochs=eps, hyak=hyak, n=n)
     else:
         print('Error: {mode} is not implemented!')
