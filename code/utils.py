@@ -66,7 +66,7 @@ def show_images(data, num_samples=9, cols=3):
         plt.subplot(int(num_samples/cols) + 1, cols, i + 1)
         plt.axis('off')
         if img.shape[0] == 1:
-            plt.imshow(img[0], cmap='magma')
+            plt.imshow(img[0], cmap='jet')
         else:
             plt.imshow(img.permute(1, 2, 0))
     plt.show()
