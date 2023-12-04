@@ -20,7 +20,7 @@ from utils import show_images, pix_error
 
 # Dataloader must return a tuple (batch of input, batch of ground truth)
 class Trainer(nn.Module):
-    def __init__(self, checkpoint_path, dataloader, CH_IN=2, CH_OUT=1, n=1,
+    def __init__(self, checkpoint_path, dataloader, CH_IN=5, CH_OUT=1, n=1,
                  optimizer=torch.optim.AdamW, learning_rate=1E-4,
                  criterion=[nn.MSELoss(), nn.L1Loss()],
                  lambdas=[0.5, 0.5], device='cuda', model=Unet):
@@ -40,6 +40,7 @@ class Trainer(nn.Module):
         self.criterion = criterion
         self.lambdas = lambdas
         self.train_error = []
+        self.val_error = []
 
     def step(self):
         self.model.train()
@@ -59,7 +60,7 @@ class Trainer(nn.Module):
 
         return error.item()
 
-    def optimize(self, epochs=200, HYAK=True):
+    def optimize(self, epochs=200, HYAK=True, val_loader=None):
         for eps in range(epochs):
             print(f'Epoch {eps + 1}|{epochs}')
             errors = []
@@ -73,39 +74,65 @@ class Trainer(nn.Module):
             torch.save(self.model.state_dict(), os.path.join(
                 self.checkpoint_path, "autosave.pt"))
 
-            print(f'Average Compound Error: {self.train_error[-1]}')
+            print(f'Average Train Error: {self.train_error[-1]}')
 
+            ln = range(len(self.train_error))
             plt.figure(figsize=(10, 5))
             plt.title("Training Error")
-            plt.plot(self.train_error, label='Average Compound Error')
+            if val_loader is not None:
+                self.val_error.append(self.validate(dataloader=val_loader,
+                                                    show=False))
+                plt.plot(ln, self.train_error, label='Average Train Error')
+                plt.plot(ln, self.val_error, label='Average Validation Error')
+            else:
+                plt.plot(ln, self.train_error, label='Average Train Set Error')
             plt.legend()
             plt.xlabel("Epochs")
             plt.ylabel("Average Error")
             plt.legend()
-
             if HYAK:
                 plt.savefig(os.path.join(self.checkpoint_path, 'errors.png'))
             else:
                 plt.show()
 
     @torch.no_grad()
-    def validate(self, dataloader=None):
+    def validate(self, dataloader=None, show=True):
         errors = []
         self.model.eval()
         data = dataloader if dataloader is not None else self.data
 
-        for _ in range(len(data.pid)):
+        for _ in trange(len(data.pid)):
             x = data.load_batch()
             input_signal = x[0].detach().type(torch.float).to(self.device)
             real_output_signal = x[1].detach().type(
                 torch.float).to(self.device)
-            fake_output_signal = self.model(input_signal)
-            show_images(torch.stack(
-                (fake_output_signal[0].cpu(), real_output_signal[0].cpu()),
-                dim=0), 2, 2)
-            errors.append(
-                pix_error(real_output_signal[0].cpu(),
-                          fake_output_signal[0].cpu()))
-            print('Error=', errors[-1])
 
-        print('Avg. prediction error=', sum(errors)/len(errors))
+            fake_output_signal = self.model(input_signal)
+
+            error = sum([self.lambdas[i] * self.criterion[i](
+                real_output_signal, fake_output_signal
+            ) for i in range(len(self.criterion))])
+
+            errors.append(error.item())
+
+            if show:
+                show_images(torch.stack((fake_output_signal[0].cpu(
+                ), real_output_signal[0].cpu(),
+                    torch.abs(fake_output_signal[0] - real_output_signal[0]
+                              ).cpu()), dim=0), 3, 3)
+                show_images(torch.permute(torch.stack((
+                    fake_output_signal[0].cpu(
+                    ), real_output_signal[0].cpu(),
+                    torch.abs(fake_output_signal[0] - real_output_signal[0]
+                              ).cpu()), dim=0), (0, 1, 3, 4, 2)), 3, 3)
+                show_images(torch.permute(torch.stack((
+                    fake_output_signal[0].cpu(
+                    ), real_output_signal[0].cpu(),
+                    torch.abs(fake_output_signal[0] - real_output_signal[0]
+                              ).cpu()), dim=0), (0, 1, 4, 2, 3)), 3, 3)
+
+        avg_err = sum(errors)/len(errors)
+
+        print(f'Average Train Error: {avg_err}')
+
+        return avg_err
