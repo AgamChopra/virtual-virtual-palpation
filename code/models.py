@@ -15,7 +15,7 @@ from utils import Block, pad3d
 
 # UNet for training task 1, 2, and 3
 class Unet(nn.Module):
-    def __init__(self, CH_IN=2, CH_OUT=1, n=1, p=0.3):
+    def __init__(self, CH_IN=5, CH_OUT=1, n=1, p=0.3):
         super(Unet, self).__init__()
         print('Model size factor =', int(64/n))
         self.drop = nn.Dropout3d(p)
@@ -96,7 +96,7 @@ class Unet(nn.Module):
 
 
 def test_unet(device='cpu', N=1):
-    a = torch.ones((N, 2, 180, 180, 180), device=device)
+    a = torch.ones((N, 5, 180, 180, 180), device=device)
 
     model = Unet(2, 1, 32).to(device)
 

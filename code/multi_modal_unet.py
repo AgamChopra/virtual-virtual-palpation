@@ -16,7 +16,8 @@ def train(path, learning_rate=1E-4, epochs=500, hyak=True, n=4):
     module = Trainer(checkpoint_path=path,
                      dataloader=train_dataloader(HYAK=hyak),
                      learning_rate=learning_rate, n=n)
-    module.optimize(epochs=epochs, HYAK=hyak)
+    module.optimize(epochs=epochs, HYAK=hyak,
+                    val_loader=val_dataloader(HYAK=hyak))
     module.validate(val_dataloader(HYAK=hyak))
 
 
@@ -27,18 +28,19 @@ def infer(path, dataloader, n=4):
 
 
 if __name__ == '__main__':
-    path = ''
-    lr = 1E-3
-    eps = 200
-    n = 4
+    lr = 1E-4
+    eps = 2000
+    n = 2
     hyak = False
-    mode = input('Train(train), Validate(val), or Test(test)')
+    path = '/gscratch/kurtlab/vvp/code' if hyak else\
+        '/home/agam/Documents/git-files/virtual-virtual-palpation/code/'
+    mode = input('Train(1), Validate(2), or Test(3)')
 
-    if mode == 'test':
+    if mode == '3':
         infer(path, dataloader=test_dataloader(HYAK=hyak), n=n)
-    elif mode == 'val':
+    elif mode == '2':
         infer(path, dataloader=val_dataloader(HYAK=hyak), n=n)
-    elif mode == 'train':
+    elif mode == '1':
         train(path, learning_rate=lr, epochs=eps, hyak=hyak, n=n)
     else:
         print('Error: {mode} is not implemented!')
