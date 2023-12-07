@@ -15,7 +15,7 @@ from tqdm import trange
 from matplotlib import pyplot as plt
 
 from models import Unet
-from utils import show_images, pix_error
+from utils import show_images, per_error
 
 
 # Dataloader must return a tuple (batch of input, batch of ground truth)
@@ -23,7 +23,8 @@ class Trainer(nn.Module):
     def __init__(self, checkpoint_path, dataloader, CH_IN=5, CH_OUT=1, n=1,
                  optimizer=torch.optim.AdamW, learning_rate=1E-4,
                  criterion=[nn.MSELoss(), nn.L1Loss()],
-                 lambdas=[0.5, 0.5], device='cuda', model=Unet):
+                 lambdas=[0.5, 0.5], device='cuda', model=Unet,
+                 step_size=350, gamma=0.1):
         super(Trainer, self).__init__()
         self.checkpoint_path = checkpoint_path
         self.device = device
@@ -36,7 +37,9 @@ class Trainer(nn.Module):
         self.data = dataloader
         self.iterations = (int((dataloader.max_id + 1) / dataloader.batch) +
                            ((dataloader.max_id + 1) % dataloader.batch > 0))
-        self.optimizer = optimizer(self.model.parameters(), learning_rate,)
+        self.optimizer = optimizer(self.model.parameters(), learning_rate)
+        self.scheduler = torch.optim.lr_scheduler.StepLR(
+            self.optimizer, step_size=step_size, gamma=gamma)
         self.criterion = criterion
         self.lambdas = lambdas
         self.train_error = []
@@ -95,6 +98,8 @@ class Trainer(nn.Module):
             else:
                 plt.show()
 
+            self.scheduler.step()
+
     @torch.no_grad()
     def validate(self, dataloader=None, show=True):
         errors = []
@@ -109,9 +114,7 @@ class Trainer(nn.Module):
 
             fake_output_signal = self.model(input_signal)
 
-            error = sum([self.lambdas[i] * self.criterion[i](
-                real_output_signal, fake_output_signal
-            ) for i in range(len(self.criterion))])
+            error = per_error(real_output_signal, fake_output_signal)
 
             errors.append(error.item())
 
@@ -133,6 +136,6 @@ class Trainer(nn.Module):
 
         avg_err = sum(errors)/len(errors)
 
-        print(f'Average Train Error: {avg_err}')
+        print(f'Average Error: {avg_err}')
 
         return avg_err
