@@ -55,18 +55,22 @@ def norm(x, mode='min-max', epsilon=1E-9):
         return (x - x.mean()) / (torch.std(x) + epsilon)
 
 
-def show_images(data, num_samples=9, cols=3):
-    data = data[..., int(data.shape[-1]/2)]
-    data = norm(data)
-    plt.figure(figsize=(15, 15))
+def show_images(in_data, num_samples=9, cols=3):
+    data = torch.zeros(in_data.shape, requires_grad=False)
 
+    for i in range(in_data.shape[1]):
+        data[:, i] = norm(in_data[:, i].detach().cpu())
+
+    data = data[..., int(data.shape[-1]/2)]
+
+    plt.figure(figsize=(15, 15))
     for i, img in enumerate(data):
         if i == num_samples:
             break
         plt.subplot(int(num_samples/cols) + 1, cols, i + 1)
         plt.axis('off')
         if img.shape[0] == 1:
-            plt.imshow(img[0], cmap='jet')
+            plt.imshow(img[0], cmap='viridis')
         else:
             plt.imshow(img.permute(1, 2, 0))
     plt.show()
@@ -383,7 +387,33 @@ def pix_error(x, y):
     mask = torch.where(x > mins, 0, 1)
     n = torch.sum(mask)
     err = torch.sum(mask * (x - y) ** 2) / n
-    return err.item()
+    return err
+
+
+def per_error(x, y):
+    '''
+    Pixel/Voxel level % error of non empty regions of input x
+
+    Parameters
+    ----------
+    x : torch tensor
+        input referance/target/known tensor.
+    y : torch tensor
+        input tensor being compared/evaluated.
+
+    Returns
+    -------
+    err : float
+        average error.
+
+    '''
+    mask = torch.where(x > 0, 1, 0)
+    n = torch.sum(mask)
+    y *= mask
+    abs_err = torch.abs(x - y)
+    err = 100 * abs_err / (x + 1E-9)
+    err = torch.sum(err) / (n + 1E-9)
+    return err
 
 
 def distributions(x, y, bins=50, rng=(0, 1)):
