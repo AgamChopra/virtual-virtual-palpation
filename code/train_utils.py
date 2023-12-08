@@ -13,6 +13,8 @@ import torch
 import torch.nn as nn
 from tqdm import trange
 from matplotlib import pyplot as plt
+import nibabel as nib
+from numpy import eye
 
 from models import Unet
 from utils import show_images, per_error
@@ -106,7 +108,7 @@ class Trainer(nn.Module):
         self.model.eval()
         data = dataloader if dataloader is not None else self.data
 
-        for _ in trange(len(data.pid)):
+        for i in trange(len(data.pid)):
             x = data.load_batch()
             input_signal = x[0].detach().type(torch.float).to(self.device)
             real_output_signal = x[1].detach().type(
@@ -133,6 +135,13 @@ class Trainer(nn.Module):
                     ), real_output_signal[0].cpu(),
                     torch.abs(fake_output_signal[0] - real_output_signal[0]
                               ).cpu()), dim=0), (0, 1, 4, 2, 3)), 3, 3)
+                try:
+                    img = nib.Nifti1Image(fake_output_signal.cpu().detach().numpy()[
+                                          0, 0], affine=eye(4))
+                    nib.save(img, os.path.join(
+                        "/home/agam/Documents/git-files/virtual-virtual-palpation/assets", '%d.nii.gz' % (i)))
+                except Exception:
+                    print('could not save .nii file')
 
         avg_err = sum(errors)/len(errors)
 
