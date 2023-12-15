@@ -12,6 +12,11 @@ from train_utils import Trainer
 from dataloader import train_dataloader, val_dataloader, test_dataloader
 
 
+def create_path(hyak):
+    return '/gscratch/kurtlab/vvp/code' if hyak else \
+           '/home/agam/Documents/git-files/virtual-virtual-palpation/code/'
+
+
 def train(path, learning_rate=1E-4, epochs=500, hyak=True, n=4):
     module = Trainer(checkpoint_path=path,
                      dataloader=train_dataloader(HYAK=hyak),
@@ -32,15 +37,19 @@ if __name__ == '__main__':
     eps = 2000
     n = 2
     hyak = False
-    path = '/gscratch/kurtlab/vvp/code' if hyak else\
-        '/home/agam/Documents/git-files/virtual-virtual-palpation/code/'
-    mode = input('Train(1), Validate(2), or Test(3)')
+    path = create_path(hyak)
 
-    if mode == '3':
-        infer(path, dataloader=test_dataloader(HYAK=hyak), n=n)
-    elif mode == '2':
-        infer(path, dataloader=val_dataloader(HYAK=hyak), n=n)
-    elif mode == '1':
-        train(path, learning_rate=lr, epochs=eps, hyak=hyak, n=n)
-    else:
-        print('Error: {mode} is not implemented!')
+    while True:
+        mode = input('Train(1), Validate(2), or Test(3): ')
+
+        if mode == '3':
+            infer(path, dataloader=test_dataloader(HYAK=hyak), n=n)
+            break
+        elif mode == '2':
+            infer(path, dataloader=val_dataloader(HYAK=hyak), n=n)
+            break
+        elif mode == '1':
+            train(path, learning_rate=lr, epochs=eps, hyak=hyak, n=n)
+            break
+        else:
+            print(f'Error: {mode} is not a valid option. Please try again.')

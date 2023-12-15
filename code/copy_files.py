@@ -23,17 +23,18 @@ dst_files = ['T1',
              'DTI2',
              'DTI3',
              'STIFF']
+
 idx = 0
 
 
-def copy_file(src, dst, src_name, dst_name):
-    shutil.copy(os.path.join(src, src_name), os.path.join(dst, dst_name))
+def copy_file(src, dst, src_name, dst_name, idx):
+    shutil.copy(os.path.join(src, src_name),
+                os.path.join(dst, f"{dst_name}_{idx}.nii"))
 
 
 for root, _, _ in os.walk(src):
     if root[-3:] == 'MRE':
         print(root)
-        for i in range(len(src_files)):
-            copy_file(root, dst, src_files[i],
-                      dst_files[i] + '_' + str(idx) + '.nii')
+        for i, src_file in enumerate(src_files):
+            copy_file(root, dst, src_file, dst_files[i], idx)
         idx += 1

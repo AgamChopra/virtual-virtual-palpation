@@ -1,13 +1,3 @@
-"""
-Created on October 2023
-@author: Agamdeep Chopra
-@email: achopra4@uw.edu
-@website: https://agamchopra.github.io/
-@affiliation: KurtLab, Department of Mechanical Engineering,
-              University of Washington, Seattle, USA
-@Refs:
-    - PyTorch 2.0 stable documentation @ https://pytorch.org/docs/stable/
-"""
 import os
 import torch
 import torch.nn as nn
@@ -20,7 +10,6 @@ from models import Unet
 from utils import show_images, per_error
 
 
-# Dataloader must return a tuple (batch of input, batch of ground truth)
 class Trainer(nn.Module):
     def __init__(self, checkpoint_path, dataloader, CH_IN=5, CH_OUT=1, n=1,
                  optimizer=torch.optim.AdamW, learning_rate=1E-4,
@@ -30,15 +19,11 @@ class Trainer(nn.Module):
         super(Trainer, self).__init__()
         self.checkpoint_path = checkpoint_path
         self.device = device
-        self.model = torch.compile(model(CH_IN, CH_OUT, n)).to(device)
-        try:
-            self.model.load_state_dict(torch.load(
-                os.path.join(checkpoint_path, 'autosave.pt')))
-        except Exception:
-            print('paramerts failed to load from last run')
+        self.model = model(CH_IN, CH_OUT, n).to(device)
+        self.load_checkpoint()
         self.data = dataloader
-        self.iterations = (int((dataloader.max_id + 1) / dataloader.batch) +
-                           ((dataloader.max_id + 1) % dataloader.batch > 0))
+        self.iterations = (dataloader.max_id +
+                           dataloader.batch - 1) // dataloader.batch
         self.optimizer = optimizer(self.model.parameters(), learning_rate)
         self.scheduler = torch.optim.lr_scheduler.StepLR(
             self.optimizer, step_size=step_size, gamma=gamma)
@@ -47,18 +32,23 @@ class Trainer(nn.Module):
         self.train_error = []
         self.val_error = []
 
+    def load_checkpoint(self):
+        try:
+            self.model.load_state_dict(torch.load(
+                os.path.join(self.checkpoint_path, 'autosave.pt')))
+        except FileNotFoundError:
+            print('Parameters failed to load from last run')
+
     def step(self):
         self.model.train()
         self.optimizer.zero_grad()
 
-        x = self.data.load_batch()
-        input_signal = x[0].detach().type(torch.float).to(self.device)
-        real_output_signal = x[1].detach().type(torch.float).to(self.device)
-
+        input_signal, real_output_signal = map(lambda x: x.detach().type(
+            torch.float).to(self.device), self.data.load_batch())
         fake_output_signal = self.model(input_signal)
 
-        error = sum([self.lambdas[i] * self.criterion[i](real_output_signal,
-                    fake_output_signal) for i in range(len(self.criterion))])
+        error = sum(self.lambdas[i] * self.criterion[i](real_output_signal,
+                    fake_output_signal) for i in range(len(self.criterion)))
 
         error.backward()
         self.optimizer.step()
@@ -70,14 +60,12 @@ class Trainer(nn.Module):
             print(f'Epoch {eps + 1}|{epochs}')
             errors = []
 
-            for itr in trange(self.iterations):
+            for _ in trange(self.iterations):
                 error = self.step()
                 errors.append(error)
 
             self.train_error.append(sum(errors) / len(errors))
-
-            torch.save(self.model.state_dict(), os.path.join(
-                self.checkpoint_path, "autosave.pt"))
+            self.save_checkpoint()
 
             print(f'Average Train Error: {self.train_error[-1]}')
 
@@ -85,8 +73,8 @@ class Trainer(nn.Module):
             plt.figure(figsize=(10, 5))
             plt.title("Training Error")
             if val_loader is not None:
-                self.val_error.append(self.validate(dataloader=val_loader,
-                                                    show=False))
+                self.val_error.append(self.validate(
+                    dataloader=val_loader, show=False))
                 plt.plot(ln, self.train_error, label='Average Train Error')
                 plt.plot(ln, self.val_error, label='Average Validation Error')
             else:
@@ -102,6 +90,10 @@ class Trainer(nn.Module):
 
             self.scheduler.step()
 
+    def save_checkpoint(self):
+        torch.save(self.model.state_dict(), os.path.join(
+            self.checkpoint_path, "autosave.pt"))
+
     @torch.no_grad()
     def validate(self, dataloader=None, show=True):
         errors = []
@@ -109,41 +101,29 @@ class Trainer(nn.Module):
         data = dataloader if dataloader is not None else self.data
 
         for i in trange(len(data.pid)):
-            x = data.load_batch()
-            input_signal = x[0].detach().type(torch.float).to(self.device)
-            real_output_signal = x[1].detach().type(
-                torch.float).to(self.device)
-
+            input_signal, real_output_signal = map(lambda x: x.detach().type(
+                torch.float).to(self.device), data.load_batch())
             fake_output_signal = self.model(input_signal)
 
             error = per_error(real_output_signal, fake_output_signal)
-
             errors.append(error.item())
 
             if show:
-                show_images(torch.stack((fake_output_signal[0].cpu(
-                ), real_output_signal[0].cpu(),
-                    torch.abs(fake_output_signal[0] - real_output_signal[0]
-                              ).cpu()), dim=0), 3, 3)
-                show_images(torch.permute(torch.stack((
-                    fake_output_signal[0].cpu(
-                    ), real_output_signal[0].cpu(),
-                    torch.abs(fake_output_signal[0] - real_output_signal[0]
-                              ).cpu()), dim=0), (0, 1, 3, 4, 2)), 3, 3)
-                show_images(torch.permute(torch.stack((
-                    fake_output_signal[0].cpu(
-                    ), real_output_signal[0].cpu(),
-                    torch.abs(fake_output_signal[0] - real_output_signal[0]
-                              ).cpu()), dim=0), (0, 1, 4, 2, 3)), 3, 3)
+                show_images(torch.stack((fake_output_signal[0].cpu(), real_output_signal[0].cpu(
+                ), torch.abs(fake_output_signal[0] - real_output_signal[0]).cpu()), dim=0), 3, 3)
+                show_images(torch.permute(torch.stack((fake_output_signal[0].cpu(), real_output_signal[0].cpu(
+                ), torch.abs(fake_output_signal[0] - real_output_signal[0]).cpu()), dim=0), (0, 1, 3, 4, 2)), 3, 3)
+                show_images(torch.permute(torch.stack((fake_output_signal[0].cpu(), real_output_signal[0].cpu(
+                ), torch.abs(fake_output_signal[0] - real_output_signal[0]).cpu()), dim=0), (0, 1, 4, 2, 3)), 3, 3)
                 try:
                     img = nib.Nifti1Image(fake_output_signal.cpu().detach().numpy()[
                                           0, 0], affine=eye(4))
                     nib.save(img, os.path.join(
-                        "/home/agam/Documents/git-files/virtual-virtual-palpation/assets", '%d.nii.gz' % (i)))
+                        "/home/agam/Documents/git-files/virtual-virtual-palpation/assets", f'{i}.nii.gz'))
                 except Exception:
-                    print('could not save .nii file')
+                    print('Could not save .nii file')
 
-        avg_err = sum(errors)/len(errors)
+        avg_err = sum(errors) / len(errors)
 
         print(f'Average Error: {avg_err}')
 
