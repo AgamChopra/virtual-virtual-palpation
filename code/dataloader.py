@@ -38,21 +38,25 @@ def augment_batch(x):
 def get_modality(path, nrm=True, mx=None, mn=None):
     image = sitk.GetArrayFromImage(sitk.ReadImage(path)).T[None, None, ...]
     image = torch.from_numpy(image.astype(dtype=float))
-    if nrm:
-        image = norm(image)
-    elif mx is not None and mn is not None:
+
+    if mx is not None and mn is not None:
         image = (image - mn) / (mx - mn)
+    elif nrm:
+        image = norm(image)
     return image
 
 
 def get_modalities(path, idx, nrm=True, mn=0., mx=1.):
-    modalities = [f'T1_{idx}.nii', f'T2_{idx}.nii', f'DTI1_{idx}.nii',
-                  f'DTI2_{idx}.nii', f'DTI3_{idx}.nii', f'STIFF_{idx}.nii']
+    modalities = [
+        [f'T1_{idx}.nii', None, None], [f'T2_{idx}.nii', None, None],
+        [f'DTI1_{idx}.nii', None, None], [f'DTI2_{idx}.nii', None, None],
+        [f'DTI3_{idx}.nii', None, None], [f'STIFF_{idx}.nii', mx, mn]
+    ]
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
         modality_results = list(executor.map(
             lambda mod: get_modality(
-                os.path.join(path, mod), nrm, mx, mn), modalities))
+                os.path.join(path, mod[0]), nrm, mod[1], mod[2]), modalities))
 
     t1, t2, d1, d2, d3, sf = modality_results
     mask = torch.where(t1 > 0, 1., 0.)
@@ -65,8 +69,9 @@ def load_patient(path, idx, nrm=True, mn=0., mx=1.):
     return out
 
 
-def load_batch_dataset(path, idx_list, mn=0., mx=1.):
-    data = [load_patient(path, idx, mn, mx) for idx in idx_list]
+def load_batch_dataset(path, idx_list, mn=0., mx=1., nrm=True):
+    data = [load_patient(path=path, idx=idx, nrm=nrm, mn=mn, mx=mx)
+            for idx in idx_list]
     return torch.cat(data, dim=0)
 
 
