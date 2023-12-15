@@ -116,7 +116,7 @@ class Trainer(nn.Module):
 
             error = per_error(real_output_signal, fake_output_signal)
 
-            errors.append(error[0].item())
+            errors.append(error.item())
 
             if show:
                 show_images(torch.stack((fake_output_signal[0].cpu(
