@@ -98,7 +98,7 @@ class Unet(nn.Module):
 def test_unet(device='cpu', N=1):
     a = torch.ones((N, 5, 180, 180, 180), device=device)
 
-    model = Unet(2, 1, 32).to(device)
+    model = Unet(5, 1, 32).to(device)
 
     b = model(a)
 
@@ -111,4 +111,5 @@ if __name__ == '__main__':
         test_unet('cuda', 1)
         print('###unet passed')
     except Exception:
+        test_unet('cuda', 1)
         print('***unet failed')
