@@ -409,9 +409,9 @@ def per_error(x, y):
     '''
     mask = torch.where(x > 0, 1, 0)
     n = torch.sum(mask)
-    y *= mask
-    abs_err = torch.abs(x - y)
-    err = 100 * abs_err / (x + 1E-9)
+    y_masked = y * mask
+    abs_err = torch.abs(x - y_masked)
+    err = mask * 100 * abs_err / (x + 1E-9)
     err = torch.sum(err) / (n + 1E-9)
     return err
 
