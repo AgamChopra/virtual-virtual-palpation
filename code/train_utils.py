@@ -15,15 +15,16 @@ from tqdm import trange
 from matplotlib import pyplot as plt
 
 from models import Unet
-from utils import show_images, per_error
+from utils import show_images, per_error, ssim_loss, PSNR
 
 
 # Dataloader must return a tuple (batch of input, batch of ground truth)
 class Trainer(nn.Module):
     def __init__(self, checkpoint_path, dataloader, CH_IN=5, CH_OUT=1, n=1,
                  optimizer=torch.optim.AdamW, learning_rate=1E-4,
-                 criterion=[nn.MSELoss(), nn.L1Loss()],
-                 lambdas=[0.5, 0.5], device='cuda', model=Unet,
+                 criterion=[nn.MSELoss(), nn.L1Loss(),
+                            ssim_loss(win_size=3, win_sigma=0.1), PSNR()],
+                 lambdas=[0.15, 0.15, 0.6, 0.2], device='cuda', model=Unet,
                  step_size=350, gamma=0.1):
         super(Trainer, self).__init__()
         self.checkpoint_path = checkpoint_path
@@ -75,7 +76,11 @@ class Trainer(nn.Module):
             self.train_error.append(sum(errors) / len(errors))
 
             torch.save(self.model.state_dict(), os.path.join(
-                self.checkpoint_path, "autosave.pt"))
+                self.checkpoint_path, 'autosave.pt'))
+
+            if (eps + 1) % 10 == 0:
+                torch.save(self.model.save_dict(), os.path.join(
+                    self.checkpoint_path, f'params_ep_{eps + 1}.pt'))
 
             print(f'Average Train Error: {self.train_error[-1]}')
 

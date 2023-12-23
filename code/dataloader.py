@@ -17,6 +17,7 @@ import torch
 from torchio.transforms import RandomFlip, RandomAffine
 
 from utils import norm, pad3d, show_images
+from metrics import run
 
 SIZE = 32 * 6
 
@@ -77,7 +78,8 @@ def load_batch_dataset(path, idx_list, mn=0., mx=1., nrm=True):
 
 class train_dataloader():
     def __init__(self, batch=1, max_id=43, post=False,
-                 augment=True, HYAK=True, aug_thresh=0.05):
+                 augment=True, HYAK=True, aug_thresh=0.05,
+                 f_pref='STIFF_'):
         self.augment = augment
         self.aug_thresh = aug_thresh
         self.max_id = max_id
@@ -88,7 +90,10 @@ class train_dataloader():
         self.post = post
         self.path = '/gscratch/kurtlab/vvp/data/train' if HYAK \
             else '/home/agam/Downloads/ME599/train'
-        with open(os.path.join(self.path, 'stiff.json'), 'r') as json_file:
+
+        run(max_id, HYAK, f_pref)
+
+        with open('./stiff.json', 'r') as json_file:
             stiff_vals = json.load(json_file)
 
         self.MAX_VAL, self.MIN_VAL = stiff_vals['MAX'], stiff_vals['MIN']
@@ -134,7 +139,7 @@ class val_dataloader():
         self.id = 0
         self.max_id = len(pid)
         self.batch = 1
-        with open(os.path.join(self.path, 'stiff.json'), 'r') as json_file:
+        with open('./stiff.json', 'r') as json_file:
             stiff_vals = json.load(json_file)
         self.MAX_VAL, self.MIN_VAL = stiff_vals['MAX'], stiff_vals['MIN']
 
@@ -160,7 +165,7 @@ class test_dataloader():
         self.id = 0
         self.max_id = len(pid)
         self.batch = 1
-        with open(os.path.join(self.path, 'stiff.json'), 'r') as json_file:
+        with open('./stiff.json', 'r') as json_file:
             stiff_vals = json.load(json_file)
         self.MAX_VAL, self.MIN_VAL = stiff_vals['MAX'], stiff_vals['MIN']
 
