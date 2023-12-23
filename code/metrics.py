@@ -32,9 +32,10 @@ def run(max_id, HYAK=False, FILE_PREFIX='STIFF_'):
 
     path = '/gscratch/kurtlab/vvp/data/train' if HYAK\
         else '/home/agam/Downloads/ME599/train'
+
     result_dict = get_vals(max_id, path, FILE_PREFIX)
 
-    with open(os.path.join(path, 'stiff.json'), 'w') as file:
+    with open('./stiff.json', 'w') as file:
         json.dump(result_dict, file)
 
 
