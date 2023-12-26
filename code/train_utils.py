@@ -14,19 +14,25 @@ import torch.nn as nn
 from tqdm import trange
 from matplotlib import pyplot as plt
 
-from models import Unet
+from models import Unet, AUnet
 from utils import show_images, per_error, ssim_loss, PSNR
 
 
-# Dataloader must return a tuple (batch of input, batch of ground truth)
+#!!Note: Dataloader must return a tuple (batch of input, batch of ground truth)
 class Trainer(nn.Module):
     def __init__(self, checkpoint_path, dataloader, CH_IN=5, CH_OUT=1, n=1,
                  optimizer=torch.optim.AdamW, learning_rate=1E-4,
                  criterion=[nn.MSELoss(), nn.L1Loss(),
                             ssim_loss(win_size=3, win_sigma=0.1), PSNR()],
-                 lambdas=[0.15, 0.15, 0.6, 0.2], device='cuda', model=Unet,
+                 lambdas=[0.15, 0.15, 0.6, 0.2], device='cuda', model='unet',
                  step_size=350, gamma=0.1):
         super(Trainer, self).__init__()
+        if model == 'unet':
+            model = Unet
+        elif model == 'aunet':
+            model = AUnet
+        else:
+            print(f'{model} not implemented!')
         self.checkpoint_path = checkpoint_path
         self.device = device
         self.model = torch.compile(model(CH_IN, CH_OUT, n)).to(device)
