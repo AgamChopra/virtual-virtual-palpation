@@ -20,4 +20,4 @@
 source ~/.bashrc
 source activate agam_1
 
-python3 multi_modal_unet.py
+python3 main.py

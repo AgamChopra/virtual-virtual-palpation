@@ -9,7 +9,7 @@ Created on December 2023
     - PyTorch 2.0 stable documentation @ https://pytorch.org/docs/stable/
 """
 from train_utils import Trainer
-from dataloader import train_dataloader, val_dataloader, test_dataloader
+from dataloader import train_dataloader, val_dataloader
 
 
 def create_path(hyak):

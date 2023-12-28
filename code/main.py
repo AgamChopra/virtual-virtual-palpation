@@ -49,11 +49,11 @@ def run_model(learning_rate, epochs, reduction_factor, is_hyak, model_type):
     assert type(epochs) == int, 'epochs must be of type int'
     assert type(reduction_factor) == int, 'reduction_factor must of type int'
     assert type(learning_rate) == float, 'learning_rate must be of type float'
-    
+
     assert reduction_factor % 2 == 0, 'reduction_factor must me multiple of 2'
     assert reduction_factor > 0, 'reduction_factor must greater than 0'
     assert epochs > 0, 'epochs must greater than 0'
-    
+
     path = create_path(is_hyak)
     operations = {
         '1': lambda: train(path, learning_rate=learning_rate, epochs=epochs,
@@ -63,7 +63,7 @@ def run_model(learning_rate, epochs, reduction_factor, is_hyak, model_type):
                            n=reduction_factor, model_type=model_type),
         '3': lambda: infer(path, dataloader=test_dataloader(HYAK=is_hyak),
                            n=reduction_factor, model_type=model_type)}
-    
+
     while True:
         mode = '1' if is_hyak else input('Train(1), Validate(2), or Test(3): ')
         action = operations.get(mode)
