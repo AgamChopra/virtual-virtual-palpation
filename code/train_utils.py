@@ -9,6 +9,7 @@ Created on October 2023
     - PyTorch 2.0 stable documentation @ https://pytorch.org/docs/stable/
 """
 import os
+from sys import exit
 import torch
 import torch.nn as nn
 from tqdm import trange
@@ -24,21 +25,60 @@ class Trainer(nn.Module):
                  optimizer=torch.optim.AdamW, learning_rate=1E-4,
                  criterion=[nn.MSELoss(), nn.L1Loss(),
                             ssim_loss(win_size=3, win_sigma=0.1), PSNR()],
-                 lambdas=[0.15, 0.15, 0.6, 0.2], device='cuda', model='unet',
-                 step_size=350, gamma=0.1):
+                 lambdas=[0.15, 0.15, 0.6, 0.2], device='cuda',
+                 model_type='unet', step_size=350, gamma=0.1):
+        '''
+        TO DO...
+
+        Parameters
+        ----------
+        checkpoint_path : TYPE
+            DESCRIPTION.
+        dataloader : TYPE
+            DESCRIPTION.
+        CH_IN : TYPE, optional
+            DESCRIPTION. The default is 5.
+        CH_OUT : TYPE, optional
+            DESCRIPTION. The default is 1.
+        n : TYPE, optional
+            DESCRIPTION. The default is 1.
+        optimizer : TYPE, optional
+            DESCRIPTION. The default is torch.optim.AdamW.
+        learning_rate : TYPE, optional
+            DESCRIPTION. The default is 1E-4.
+        criterion : TYPE, optional
+            DESCRIPTION. The default is [nn.MSELoss(), nn.L1Loss(), ssim_loss(win_size=3, win_sigma=0.1), PSNR()].
+        lambdas : TYPE, optional
+            DESCRIPTION. The default is [0.15, 0.15, 0.6, 0.2].
+        device : TYPE, optional
+            DESCRIPTION. The default is 'cuda'.
+        model_type : TYPE, optional
+            DESCRIPTION. The default is 'unet'.
+        step_size : TYPE, optional
+            DESCRIPTION. The default is 350.
+        gamma : TYPE, optional
+            DESCRIPTION. The default is 0.1.
+
+        Returns
+        -------
+        None.
+
+        '''
         super(Trainer, self).__init__()
-        if model == 'unet':
+        self.model_type = model_type
+        if self.model_type == 'unet':
             model = Unet
-        elif model == 'aunet':
+        elif self.model_type == 'aunet':
             model = AUnet
         else:
-            print(f'{model} not implemented!')
+            exit(f'{model} not implemented!')
         self.checkpoint_path = checkpoint_path
         self.device = device
         self.model = torch.compile(model(CH_IN, CH_OUT, n)).to(device)
         try:
             self.model.load_state_dict(torch.load(
-                os.path.join(checkpoint_path, 'autosave.pt')))
+                os.path.join(checkpoint_path,
+                             os.path.join(self.model_type, 'autosave.pt'))))
         except Exception:
             print('paramerts failed to load from last run')
         self.data = dataloader
@@ -71,6 +111,23 @@ class Trainer(nn.Module):
         return error.item()
 
     def optimize(self, epochs=200, HYAK=True, val_loader=None):
+        '''
+        TO DO...
+
+        Parameters
+        ----------
+        epochs : TYPE, optional
+            DESCRIPTION. The default is 200.
+        HYAK : TYPE, optional
+            DESCRIPTION. The default is True.
+        val_loader : TYPE, optional
+            DESCRIPTION. The default is None.
+
+        Returns
+        -------
+        None.
+
+        '''
         for eps in range(epochs):
             print(f'Epoch {eps + 1}|{epochs}')
             errors = []
@@ -82,7 +139,8 @@ class Trainer(nn.Module):
             self.train_error.append(sum(errors) / len(errors))
 
             torch.save(self.model.state_dict(), os.path.join(
-                self.checkpoint_path, 'autosave.pt'))
+                self.checkpoint_path, os.path.join(self.model_type,
+                                                   'autosave.pt')))
 
             if (eps + 1) % 10 == 0:
                 torch.save(self.model.save_dict(), os.path.join(
@@ -113,6 +171,22 @@ class Trainer(nn.Module):
 
     @torch.no_grad()
     def validate(self, dataloader=None, show=True):
+        '''
+        TO DO...
+
+        Parameters
+        ----------
+        dataloader : TYPE, optional
+            DESCRIPTION. The default is None.
+        show : TYPE, optional
+            DESCRIPTION. The default is True.
+
+        Returns
+        -------
+        avg_err : TYPE
+            DESCRIPTION.
+
+        '''
         errors = []
         self.model.eval()
         data = dataloader if dataloader is not None else self.data
