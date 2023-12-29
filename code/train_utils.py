@@ -10,16 +10,16 @@ Created on October 2023
 """
 import os
 from sys import exit
+import numpy as np
 import torch
 import torch.nn as nn
-from tqdm import trange
+from tqdm import tqdm, trange
 from matplotlib import pyplot as plt
 
-from models import Unet, AUnet
+from models import get_models
 from utils import show_images, per_error, ssim_loss, PSNR
 
 
-#!!Note: Dataloader must return a tuple (batch of input, batch of ground truth)
 class Trainer(nn.Module):
     def __init__(self, checkpoint_path, dataloader, CH_IN=5, CH_OUT=1, n=1,
                  optimizer=torch.optim.AdamW, learning_rate=1E-4,
@@ -34,8 +34,8 @@ class Trainer(nn.Module):
         ----------
         checkpoint_path : TYPE
             DESCRIPTION.
-        dataloader : TYPE
-            DESCRIPTION.
+        dataloader : tuple
+            must return a tuple of tensors (batch of input, batch of ground truth).
         CH_IN : TYPE, optional
             DESCRIPTION. The default is 5.
         CH_OUT : TYPE, optional
@@ -66,15 +66,13 @@ class Trainer(nn.Module):
         '''
         super(Trainer, self).__init__()
         self.model_type = model_type
-        if self.model_type == 'unet':
-            model = Unet
-        elif self.model_type == 'aunet':
-            model = AUnet
-        else:
-            exit(f'{model} not implemented!')
+        models = get_models(CH_IN, CH_OUT, n)
+        model = models.get(
+            self.model_type) if self.model_type in models else exit(
+                f'{self.model_type} not implemented!')
         self.checkpoint_path = checkpoint_path
         self.device = device
-        self.model = torch.compile(model(CH_IN, CH_OUT, n)).to(device)
+        self.model = torch.compile(model).to(device)
         try:
             self.model.load_state_dict(torch.load(
                 os.path.join(checkpoint_path,
@@ -132,7 +130,7 @@ class Trainer(nn.Module):
             print(f'Epoch {eps + 1}|{epochs}')
             errors = []
 
-            for itr in trange(self.iterations):
+            for itr in trange(self.iterations, desc='Training'):
                 error = self.step()
                 errors.append(error)
 
@@ -169,58 +167,45 @@ class Trainer(nn.Module):
 
             self.scheduler.step()
 
-    @torch.no_grad()
-    def validate(self, dataloader=None, show=True):
-        '''
-        TO DO...
+        @torch.no_grad()
+        def validate(self, dataloader=None, show=True):
+            errors = []
+            self.model.eval()
+            data = dataloader if dataloader is not None else self.data
 
-        Parameters
-        ----------
-        dataloader : TYPE, optional
-            DESCRIPTION. The default is None.
-        show : TYPE, optional
-            DESCRIPTION. The default is True.
+            for x_batch in tqdm(data, desc="Validating"):
+                input_signal, real_output_signal = [
+                    x.to(self.device) for x in x_batch]
 
-        Returns
-        -------
-        avg_err : TYPE
-            DESCRIPTION.
+                fake_output_signal = self.model(input_signal)
 
-        '''
-        errors = []
-        self.model.eval()
-        data = dataloader if dataloader is not None else self.data
+                error = per_error(real_output_signal, fake_output_signal)
 
-        for _ in trange(len(data.pid)):
-            x = data.load_batch()
-            input_signal = x[0].detach().type(torch.float).to(self.device)
-            real_output_signal = x[1].detach().type(
-                torch.float).to(self.device)
+                errors.extend(error.cpu().numpy())
 
-            fake_output_signal = self.model(input_signal)
+                if show:
+                    self.show_validation_images(
+                        fake_output_signal, real_output_signal)
 
-            error = per_error(real_output_signal, fake_output_signal)
+            avg_err = np.mean(errors)
 
-            errors.append(error.item())
+            print(f'Average Error: {avg_err}')
 
-            if show:
-                show_images(torch.stack((fake_output_signal[0].cpu(
+            return avg_err
+
+        def show_validation_images(self, fake_output_signal,
+                                   real_output_signal):
+            show_images(torch.stack((fake_output_signal[0].cpu(
+            ), real_output_signal[0].cpu(),
+                torch.abs(fake_output_signal[0] - real_output_signal[0]
+                          ).cpu()), dim=0), 3, 3)
+            show_images(torch.permute(torch.stack((
+                fake_output_signal[0].cpu(
                 ), real_output_signal[0].cpu(),
-                    torch.abs(fake_output_signal[0] - real_output_signal[0]
-                              ).cpu()), dim=0), 3, 3)
-                show_images(torch.permute(torch.stack((
-                    fake_output_signal[0].cpu(
-                    ), real_output_signal[0].cpu(),
-                    torch.abs(fake_output_signal[0] - real_output_signal[0]
-                              ).cpu()), dim=0), (0, 1, 3, 4, 2)), 3, 3)
-                show_images(torch.permute(torch.stack((
-                    fake_output_signal[0].cpu(
-                    ), real_output_signal[0].cpu(),
-                    torch.abs(fake_output_signal[0] - real_output_signal[0]
-                              ).cpu()), dim=0), (0, 1, 4, 2, 3)), 3, 3)
-
-        avg_err = sum(errors)/len(errors)
-
-        print(f'Average Error: {avg_err}')
-
-        return avg_err
+                torch.abs(fake_output_signal[0] - real_output_signal[0]
+                          ).cpu()), dim=0), (0, 1, 3, 4, 2)), 3, 3)
+            show_images(torch.permute(torch.stack((
+                fake_output_signal[0].cpu(
+                ), real_output_signal[0].cpu(),
+                torch.abs(fake_output_signal[0] - real_output_signal[0]
+                          ).cpu()), dim=0), (0, 1, 4, 2, 3)), 3, 3)

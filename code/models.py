@@ -218,6 +218,12 @@ def test_aunet(device='cpu', N=1):
     print(b.shape)
 
 
+def get_models(CH_IN, CH_OUT, n):
+    models = {'unet': lambda: Unet(CH_IN, CH_OUT, n),
+              'aunet': lambda: AUnet(CH_IN, CH_OUT, n)}
+    return models
+
+
 if __name__ == '__main__':
     devices = ['cpu', 'cuda']
     try:

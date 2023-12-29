@@ -79,7 +79,9 @@ def load_batch_dataset(path, idx_list, mn=0., mx=1., nrm=True):
 class train_dataloader():
     def __init__(self, batch=1, max_id=43, post=False,
                  augment=True, HYAK=True, aug_thresh=0.05,
-                 f_pref='STIFF_'):
+                 workers=4, f_pref='STIFF_'):
+        self.executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers=workers)
         self.augment = augment
         self.aug_thresh = aug_thresh
         self.max_id = max_id
@@ -109,25 +111,35 @@ class train_dataloader():
 
         if self.id + self.batch > self.max_id:
             if self.id < self.max_id:
-                batch_raw = load_batch_dataset(self.path, self.idx[self.id:],
-                                               self.MIN_VAL, self.MAX_VAL)
+                batch_raw = self.load_batch_dataset_async(self.idx[self.id:])
             elif self.id == self.max_id:
-                batch_raw = load_batch_dataset(
-                    self.path, self.idx[self.id:self.id + 1],
-                    self.MIN_VAL, self.MAX_VAL)
+                batch_raw = self.load_batch_dataset_async(
+                    self.idx[self.id:self.id + 1])
             self.id = 0
             self.randomize()
             if self.post:
                 print('Dataset re-randomized...', self.idx)
         else:
-            batch_raw = load_batch_dataset(
-                self.path, self.idx[self.id:self.id + self.batch],
-                self.MIN_VAL, self.MAX_VAL)
+            batch_raw = self.load_batch_dataset_async(
+                self.idx[self.id:self.id + self.batch])
             self.id += self.batch
+
         if self.augment and random.uniform(0, 1) > self.aug_thresh:
             batch_raw = augment_batch(batch_raw)
 
         return (batch_raw[:, 0:5], batch_raw[:, 5:6])
+
+    def load_batch_dataset_async(self, idx_list):
+        futures = []
+
+        for idx in idx_list:
+            future = self.executor.submit(
+                load_patient, self.path, idx, self.nrm,
+                self.MIN_VAL, self.MAX_VAL)
+            futures.append(future)
+
+        results = [future.result() for future in futures]
+        return torch.cat(results, dim=0)
 
 
 class val_dataloader():
