@@ -224,9 +224,6 @@ class attention_grid(nn.Module):
             in_channels=g_c, out_channels=i_c, kernel_size=1, stride=1,
             bias=True))
 
-        self.mlp = nn.Sequential(nn.utils.spectral_norm(
-            nn.Linear(embd_dim, i_c, bias=False)), nn.ReLU())
-
         self.tfilt = nn.utils.spectral_norm(nn.Conv3d(
             in_channels=i_c, out_channels=i_c, kernel_size=1, stride=1,
             bias=False))
@@ -237,10 +234,8 @@ class attention_grid(nn.Module):
 
         self.mode = mode
 
-    def forward(self, x, g, t):
-        t = self.mlp(t)
-        t = t[(..., ) + (None, ) * 3]
-        a = nn.functional.relu(self.tfilt(self.input_filter(x) + t))
+    def forward(self, x, g):
+        a = nn.functional.relu(self.tfilt(self.input_filter(x)))
         b = self.gate_filter(g)
 
         if a.shape[-1] < b.shape[-1]:
