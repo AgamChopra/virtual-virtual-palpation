@@ -17,7 +17,7 @@ from tqdm import tqdm, trange
 from matplotlib import pyplot as plt
 
 from models import get_models
-from utils import show_images, per_error, ssim_loss, PSNR
+from utils import show_images, per_error, ssim_loss, PSNR, mask_generator, compose, getPositionEncoding
 
 
 class Trainer(nn.Module):
@@ -26,7 +26,8 @@ class Trainer(nn.Module):
                  criterion=[nn.MSELoss(), nn.L1Loss(),
                             ssim_loss(win_size=3, win_sigma=0.1), PSNR()],
                  lambdas=[0.15, 0.15, 0.6, 0.2], device='cuda',
-                 model_type='unet', step_size=350, gamma=0.1):
+                 model_type='unet', step_size=350, gamma=0.1,
+                 filter_steps=256):
         '''
         TO DO...
 
@@ -89,6 +90,8 @@ class Trainer(nn.Module):
         self.lambdas = lambdas
         self.train_error = []
         self.val_error = []
+        if self.model_type == 'taunet':
+            self.mask_func = mask_generator(filter_steps, 64)
 
     def step(self):
         self.model.train()
@@ -98,10 +101,21 @@ class Trainer(nn.Module):
         input_signal = x[0].detach().type(torch.float).to(self.device)
         real_output_signal = x[1].detach().type(torch.float).to(self.device)
 
-        fake_output_signal = self.model(input_signal)
+        if self.model_type == 'taunet':
+            initial_masking_signal = input_signal[:, 0:1]
+            step_output_i, step_output_j, step_emb_i = self.mask_func.apply(
+                real_output_signal, initial_masking_signal)
+            masked_input_signal_i = input_signal * \
+                torch.where(step_output_i > 0, 1., 0.)
+            fake_step_output_j = self.model(masked_input_signal_i, step_emb_i)
+            signal = (step_output_j, fake_step_output_j)
 
-        error = sum([self.lambdas[i] * self.criterion[i](real_output_signal,
-                    fake_output_signal) for i in range(len(self.criterion))])
+        else:
+            fake_output_signal = self.model(input_signal)
+            signal = (real_output_signal, fake_output_signal)
+
+        error = sum([self.lambdas[i] * self.criterion[i](signal[0], signal[1])
+                    for i in range(len(self.criterion))])
 
         error.backward()
         self.optimizer.step()
@@ -168,16 +182,37 @@ class Trainer(nn.Module):
             self.scheduler.step()
 
         @torch.no_grad()
-        def validate(self, dataloader=None, show=True):
+        def validate(self, dataloader=None, show=True, TAU=0.1):
             errors = []
             self.model.eval()
             data = dataloader if dataloader is not None else self.data
+            if self.model_type == 'taunet':
+                t_enc = getPositionEncoding(
+                    self.filter_steps-1, 64).to(next(self.model.parameters()
+                                                     ).device)
 
             for x_batch in tqdm(data, desc="Validating"):
                 input_signal, real_output_signal = [
                     x.to(self.device) for x in x_batch]
 
-                fake_output_signal = self.model(input_signal)
+                if self.model_type == 'taunet':
+                    mask = [torch.where(
+                        input_signal[:, 0:1] > TAU, 1, 0).cpu()]
+
+                    for i in range(self.filter_steps - 1):
+                        t = t_enc[i:i+1]
+                        t = torch.cat(
+                            [t for _ in range(real_output_signal.shape[0])],
+                            dim=0)
+                        input_signal *= mask[-1].cuda()
+                        mask.append(self.model(
+                            input_signal, t).cpu() * mask[-1])
+
+                    mask = torch.cat(mask, dim=1)
+                    fake_output_signal = compose(mask)
+
+                else:
+                    fake_output_signal = self.model(input_signal)
 
                 error = per_error(real_output_signal, fake_output_signal)
 
