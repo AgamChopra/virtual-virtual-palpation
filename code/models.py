@@ -221,8 +221,9 @@ def test_aunet(device='cpu', N=1):
 
 # Tau_Net: Threshold-Attention-UNet
 class TAUnet(nn.Module):
-    def __init__(self, in_c, out_c, embd_dim, n=64, mode='trilinear'):
+    def __init__(self, in_c, out_c, embd_dim, n=1, mode='trilinear'):
         super(TAUnet, self).__init__()
+        n = int(64 / n)
         print('Model size factor = %d' % n)
         self.mode = mode
         self.out_c = out_c
