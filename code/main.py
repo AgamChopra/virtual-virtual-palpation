@@ -8,10 +8,37 @@ Created on December 2023
 @Refs:
     - PyTorch 2.0 stable documentation @ https://pytorch.org/docs/stable/
 """
+import os
 import json
+import random
+import torch
 
 from run import train, infer, create_path
 from dataloader import val_dataloader, test_dataloader
+
+
+torch.set_printoptions(precision=9)
+
+# 'highest', 'high', 'medium'. 'highest' is slower but accurate while 'medium'
+#  is faster but less accurate. 'high' is preferred setting. Refer:
+#  https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html
+torch.set_float32_matmul_precision('medium')
+
+# 'True' = faster but less accurate, 'False' = Slower but more accurate
+#  has to be set to True if precision is high or medium
+torch.backends.cuda.matmul.allow_tf32 = True
+
+# 'True' = faster but less accurate, 'False' = Slower but more accurate
+#  has to be set to True if presision is high or medium
+torch.backends.cudnn.allow_tf32 = True
+
+SEED = 64
+
+random.seed(SEED)
+os.environ['PYTHONHASHSEED'] = str(SEED)
+torch.manual_seed(SEED)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 
 
 def get_params():

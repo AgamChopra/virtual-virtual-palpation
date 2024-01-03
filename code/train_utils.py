@@ -79,6 +79,7 @@ class Trainer(nn.Module):
                 os.path.join(checkpoint_path,
                              os.path.join(self.model_type, 'autosave.pt'))))
         except Exception:
+            # TO DO: TRY TO LOAD PARAMETERS FROM INITIAL STATE OF HYPERPARAMETER_OPTIMIZATION MODEL
             print('paramerts failed to load from last run')
         self.data = dataloader
         self.iterations = (int((dataloader.max_id + 1) / dataloader.batch) +
