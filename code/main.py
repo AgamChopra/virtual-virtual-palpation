@@ -13,7 +13,7 @@ import json
 import random
 import torch
 
-from run import train, infer, create_path
+from run import train, infer, create_path, get_optimal_params
 from dataloader import val_dataloader, test_dataloader
 
 
@@ -49,7 +49,7 @@ def get_params():
         return json.load(json_file).values()
 
 
-def run_model(learning_rate, epochs, reduction_factor, is_hyak, model_type):
+def run_model(learning_rate, epochs, reduction_factor, model_type, is_hyak):
     '''
     Run the model based on user input.
 
@@ -102,4 +102,16 @@ def run_model(learning_rate, epochs, reduction_factor, is_hyak, model_type):
 
 
 if __name__ == '__main__':
-    run_model(*get_params())
+    try:
+        run_model(*get_params())
+    except Exception:
+        params = list(get_params())
+        param_search = get_optimal_params(params[-2], params[-3])
+        optimal_params = param_search[0][-1]
+        print(f'lr = {optimal_params[0]}\n \
+              lambda1 = {optimal_params[1]}\n \
+                  lambda2 = {optimal_params[2]}\n \
+                      lambda3 = {optimal_params[3]}\n \
+                          lambda4 = {optimal_params[4]}\n \
+                              stepsize = {optimal_params[5]}\n \
+                                  gamma = {optimal_params[6]}')

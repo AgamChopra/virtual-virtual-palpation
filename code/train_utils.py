@@ -36,7 +36,8 @@ class Trainer(nn.Module):
         checkpoint_path : TYPE
             DESCRIPTION.
         dataloader : tuple
-            must return a tuple of tensors (batch of input, batch of ground truth).
+            must return a tuple of tensors (batch of input, batch of
+                                            ground truth).
         CH_IN : TYPE, optional
             DESCRIPTION. The default is 5.
         CH_OUT : TYPE, optional
@@ -48,7 +49,9 @@ class Trainer(nn.Module):
         learning_rate : TYPE, optional
             DESCRIPTION. The default is 1E-4.
         criterion : TYPE, optional
-            DESCRIPTION. The default is [nn.MSELoss(), nn.L1Loss(), ssim_loss(win_size=3, win_sigma=0.1), PSNR()].
+            DESCRIPTION. The default is [nn.MSELoss(), nn.L1Loss(),
+                                         ssim_loss(win_size=3, win_sigma=0.1),
+                                         PSNR()].
         lambdas : TYPE, optional
             DESCRIPTION. The default is [0.15, 0.15, 0.6, 0.2].
         device : TYPE, optional
@@ -75,12 +78,18 @@ class Trainer(nn.Module):
         self.device = device
         self.model = torch.compile(model).to(device)
         try:
-            self.model.load_state_dict(torch.load(
-                os.path.join(checkpoint_path,
-                             os.path.join(self.model_type, 'autosave.pt'))))
+            print('Loading parameters from last run')
+            self.model.load_state_dict(torch.load(os.path.join(
+                checkpoint_path, (f'{self.model_type}_autosave.pt'))))
         except Exception:
-            # TO DO: TRY TO LOAD PARAMETERS FROM INITIAL STATE OF HYPERPARAMETER_OPTIMIZATION MODEL
-            print('paramerts failed to load from last run')
+            try:
+                print(
+                    'paramerts failed to load from last run\n\
+                        Loading saved initial state')
+                self.model.load_state_dict(torch.load(
+                    f'initial_state_{self.model_type}.pt'))
+            except Exception:
+                print('paramerts failed to load\nUsing random state')
         self.data = dataloader
         self.iterations = (int((dataloader.max_id + 1) / dataloader.batch) +
                            ((dataloader.max_id + 1) % dataloader.batch > 0))
@@ -152,8 +161,7 @@ class Trainer(nn.Module):
             self.train_error.append(sum(errors) / len(errors))
 
             torch.save(self.model.state_dict(), os.path.join(
-                self.checkpoint_path, os.path.join(self.model_type,
-                                                   'autosave.pt')))
+                self.checkpoint_path, f'{self.model_type}_autosave.pt'))
 
             if (eps + 1) % 10 == 0:
                 torch.save(self.model.save_dict(), os.path.join(

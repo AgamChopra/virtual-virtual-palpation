@@ -22,17 +22,21 @@ parameter_bounds = torch.tensor([lr_bounds, lambda1_bounds, lambda2_bounds,
 class FetchBestHyperparameters:
     def __init__(self, model, train_set=train_dataloader,
                  val_set=val_dataloader, eval_metric=per_error, n_iters=20,
-                 bounds=parameter_bounds):
+                 bounds=parameter_bounds, state_name='model'):
         self.model = model
-        # save initial state of the model
         self.train_set = train_set
         self.val_set = val_set
         self.eval_metric = eval_metric
         self.bounds = bounds
         self.n_iters = n_iters
+        self.state_name = state_name
+        torch.save(self.model.state_dict(),
+                   f'initial_state_{self.state_name}.pt')
 
     def objective_function(self, params):
-        # Load model from initial state
+        # Load model from initial state #!!!
+        self.model.load_state_dict(torch.load(
+            f'initial_state_{self.state_name}.pt'))
         # Train with given hyperparameters on trainset
         # Validate on valset calculate performance using eval metric
         # return performance
@@ -87,10 +91,12 @@ class FetchBestHyperparameters:
 
             def wrapped_acquisition(x):
                 x_tensor = torch.tensor(x, dtype=torch.float32).unsqueeze(0)
-                return -self.acquisition_function(x_tensor, model, likelihood).numpy()
+                return -self.acquisition_function(x_tensor, model,
+                                                  likelihood).numpy()
 
-            next_point_to_probe = minimize(wrapped_acquisition, x0=np.random.rand(
-                num_hyperparams), bounds=self.bounds.numpy()).x
+            next_point_to_probe = minimize(
+                wrapped_acquisition, x0=np.random.rand(
+                    num_hyperparams), bounds=self.bounds.numpy()).x
             next_point_to_probe = torch.tensor(
                 [next_point_to_probe], dtype=torch.float32)
 
@@ -105,4 +111,3 @@ class FetchBestHyperparameters:
         print("Optimal Hyperparameters:", optimal_x[-1])
         print("Best Performance:", optimal_y[-1])
         return (optimal_x, optimal_y)
-

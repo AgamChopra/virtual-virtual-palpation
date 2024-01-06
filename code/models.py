@@ -213,7 +213,7 @@ def test_aunet(device='cpu', N=1):
     model = AUnet(5, 1, 32, 0.3, 8).to(device)
 
     b = model(a)
-    
+
     print(model.device())
     print(a.shape)
     print(b.shape)
