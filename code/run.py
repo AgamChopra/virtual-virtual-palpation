@@ -10,6 +10,8 @@ Created on December 2023
 """
 from train_utils import Trainer
 from dataloader import train_dataloader, val_dataloader
+from models import get_models
+from hyperparameter_search import FetchBestHyperparameters
 
 
 def create_path(hyak):
@@ -87,3 +89,11 @@ def infer(path, dataloader, n=4, model_type='unet'):
     module = Trainer(checkpoint_path=path, model=model_type,
                      dataloader=dataloader, n=n)
     module.validate(dataloader)
+
+
+# TO DO: run hyperparameter search
+def get_optimal_params(model_type, reduction_factor):
+    models = get_models(CH_IN=5, CH_OUT=1, n=reduction_factor)
+    param_search = FetchBestHyperparameters(model=models[model_type],
+                                            state_name=model_type)
+    return param_search.search()

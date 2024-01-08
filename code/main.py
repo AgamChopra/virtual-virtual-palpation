@@ -8,10 +8,37 @@ Created on December 2023
 @Refs:
     - PyTorch 2.0 stable documentation @ https://pytorch.org/docs/stable/
 """
+import os
 import json
+import random
+import torch
 
-from run import train, infer, create_path
+from run import train, infer, create_path, get_optimal_params
 from dataloader import val_dataloader, test_dataloader
+
+
+torch.set_printoptions(precision=9)
+
+# 'highest', 'high', 'medium'. 'highest' is slower but accurate while 'medium'
+#  is faster but less accurate. 'high' is preferred setting. Refer:
+#  https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html
+torch.set_float32_matmul_precision('medium')
+
+# 'True' = faster but less accurate, 'False' = Slower but more accurate
+#  has to be set to True if precision is high or medium
+torch.backends.cuda.matmul.allow_tf32 = True
+
+# 'True' = faster but less accurate, 'False' = Slower but more accurate
+#  has to be set to True if presision is high or medium
+torch.backends.cudnn.allow_tf32 = True
+
+SEED = 64
+
+random.seed(SEED)
+os.environ['PYTHONHASHSEED'] = str(SEED)
+torch.manual_seed(SEED)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 
 
 def get_params():
@@ -22,7 +49,7 @@ def get_params():
         return json.load(json_file).values()
 
 
-def run_model(learning_rate, epochs, reduction_factor, is_hyak, model_type):
+def run_model(learning_rate, epochs, reduction_factor, model_type, is_hyak):
     '''
     Run the model based on user input.
 
@@ -75,4 +102,16 @@ def run_model(learning_rate, epochs, reduction_factor, is_hyak, model_type):
 
 
 if __name__ == '__main__':
-    run_model(*get_params())
+    try:
+        run_model(*get_params())
+    except Exception:
+        params = list(get_params())
+        param_search = get_optimal_params(params[-2], params[-3])
+        optimal_params = param_search[0][-1]
+        print(f'lr = {optimal_params[0]}\n \
+              lambda1 = {optimal_params[1]}\n \
+                  lambda2 = {optimal_params[2]}\n \
+                      lambda3 = {optimal_params[3]}\n \
+                          lambda4 = {optimal_params[4]}\n \
+                              stepsize = {optimal_params[5]}\n \
+                                  gamma = {optimal_params[6]}')

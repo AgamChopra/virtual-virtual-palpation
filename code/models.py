@@ -10,7 +10,7 @@ Created on October 2023
 """
 import torch
 import torch.nn as nn
-from utils import Block, pad3d, attention_grid
+from utils import pad3d, attention_grid, Block, Block2
 
 
 # UNet
@@ -214,13 +214,126 @@ def test_aunet(device='cpu', N=1):
 
     b = model(a)
 
+    print(model.device())
     print(a.shape)
     print(b.shape)
 
 
+# Tau_Net: Threshold-Attention-UNet
+class TAUnet(nn.Module):
+    def __init__(self, in_c, out_c, embd_dim, n=1, mode='trilinear'):
+        super(TAUnet, self).__init__()
+        n = int(64 / n)
+        print('Model size factor = %d' % n)
+        self.mode = mode
+        self.out_c = out_c
+
+        self.layer1 = Block2(in_c=in_c,
+                             embd_dim=embd_dim, out_c=int(1 * n))
+
+        self.layer2 = Block2(in_c=int(1 * n),
+                             embd_dim=embd_dim, out_c=int(2 * n))
+
+        self.layer3 = Block2(in_c=int(2 * n),
+                             embd_dim=embd_dim, out_c=int(4 * n))
+
+        self.layer4 = Block2(in_c=int(4 * n),
+                             embd_dim=embd_dim, out_c=int(8 * n))
+
+        self.layer5 = Block2(in_c=int(8 * n), embd_dim=embd_dim,
+                             out_c=int(8 * n), hid_c=int(16 * n))
+
+        self.layer6 = Block2(in_c=int(16 * n), embd_dim=embd_dim,
+                             out_c=int(4 * n), hid_c=int(8 * n))
+
+        self.layer7 = Block2(in_c=int(8 * n), embd_dim=embd_dim,
+                             out_c=int(2 * n), hid_c=int(4 * n))
+
+        self.layer8 = Block2(in_c=int(4 * n), embd_dim=embd_dim,
+                             out_c=int(1 * n), hid_c=int(2 * n))
+
+        self.layer9 = Block2(in_c=int(2 * n), embd_dim=embd_dim,
+                             out_c=int(1 * n), final_layer=True)
+
+        self.out = nn.Conv3d(in_channels=int(
+            1 * n), out_channels=out_c, kernel_size=1)
+
+        self.skip1 = attention_grid(
+            int(1 * n), int(1 * n), int(1 * n), embd_dim)
+
+        self.skip2 = attention_grid(
+            int(2 * n), int(2 * n), int(2 * n), embd_dim)
+
+        self.skip3 = attention_grid(
+            int(4 * n), int(4 * n), int(4 * n), embd_dim)
+
+        self.skip4 = attention_grid(
+            int(8 * n), int(8 * n), int(8 * n), embd_dim)
+
+        self.attention_mask = None
+
+    def forward(self, x, embds):
+        assert x.device == embds.device, "inputs 'x' and 'embds' are expected \
+            to be on the same device, but found at least two devices, '%s' and\
+                '%s'!" % (
+            x.device, embds.device)
+
+        assert x.device == self.out.weight.device, "inputs 'x' and 'parameters\
+            ' are expected to be on the same device, but found at least two de\
+                vices, '%s' and '%s'!" % (
+            x.device, self.out.weight.device)
+
+        assert len(
+            x.shape) == 5, "Expected input to be a 5D tensor of shape (N,C,x,y\
+            ,z)"
+
+        assert len(
+            embds.shape) == 2, "Expected embds to be a 2D tensor (N,m)"
+
+        assert x.shape[0] == embds.shape[0], "Batch size of input must match b\
+            atch size of embds!"
+
+        assert x.dtype == torch.float, "input must be of type torch.float!"
+
+        assert embds.dtype == torch.float, "embds must be of type torch.float!"
+
+        x_ = pad3d(x, (186, 186, 186)).to(dtype=torch.float)
+
+        y, y1 = self.layer1(x_, embds)
+
+        y, y2 = self.layer2(y, embds)
+
+        y, y3 = self.layer3(y, embds)
+
+        y, y4 = self.layer4(y, embds)
+
+        y = self.layer5(y, embds)
+        y4, _ = self.skip4(y4, y, embds)
+
+        y = torch.cat((y4, pad3d(y, y4)), dim=1)
+        y = self.layer6(y, embds)
+        y3, _ = self.skip3(y3, y, embds)
+
+        y = torch.cat((y3, pad3d(y, y3)), dim=1)
+        y = self.layer7(y, embds)
+        y2, _ = self.skip2(y2, y, embds)
+
+        y = torch.cat((y2, pad3d(y, y2)), dim=1)
+        y = self.layer8(y, embds)
+        y1, self.attention_mask = self.skip1(y1, y, embds)
+
+        y = torch.cat((y1, pad3d(y, y1)), dim=1)
+        y = self.layer9(y, embds)
+
+        y = nn.functional.sigmoid(self.out(y))
+
+        return y
+
+
 def get_models(CH_IN, CH_OUT, n):
     models = {'unet': lambda: Unet(CH_IN, CH_OUT, n),
-              'aunet': lambda: AUnet(CH_IN, CH_OUT, n)}
+              'aunet': lambda: AUnet(CH_IN, CH_OUT, n),
+              'taunet': lambda: TAUnet(CH_IN, CH_OUT, 64, n)}
     return models
 
 
