@@ -96,4 +96,4 @@ def get_optimal_params(model_type, reduction_factor):
     models = get_models(CH_IN=5, CH_OUT=1, n=reduction_factor)
     param_search = FetchBestHyperparameters(model=models[model_type],
                                             state_name=model_type)
-    return param_search
+    return param_search.search()

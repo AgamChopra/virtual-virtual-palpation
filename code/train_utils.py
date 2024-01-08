@@ -17,7 +17,8 @@ from tqdm import tqdm, trange
 from matplotlib import pyplot as plt
 
 from models import get_models
-from utils import show_images, per_error, ssim_loss, PSNR, mask_generator, compose, getPositionEncoding
+from utils import show_images, per_error, ssim_loss, PSNR, mask_generator,\
+    compose, getPositionEncoding
 
 
 class Trainer(nn.Module):
@@ -133,23 +134,6 @@ class Trainer(nn.Module):
         return error.item()
 
     def optimize(self, epochs=200, HYAK=True, val_loader=None):
-        '''
-        TO DO...
-
-        Parameters
-        ----------
-        epochs : TYPE, optional
-            DESCRIPTION. The default is 200.
-        HYAK : TYPE, optional
-            DESCRIPTION. The default is True.
-        val_loader : TYPE, optional
-            DESCRIPTION. The default is None.
-
-        Returns
-        -------
-        None.
-
-        '''
         for eps in range(epochs):
             print(f'Epoch {eps + 1}|{epochs}')
             errors = []
