@@ -45,7 +45,7 @@ def get_params():
     '''
     Load parameters from a JSON file.
     '''
-    with open('./parameters.json', 'r') as json_file:
+    with open('./logs/parameters.json', 'r') as json_file:
         return json.load(json_file).values()
 
 
@@ -72,7 +72,7 @@ def run_model(learning_rate, epochs, reduction_factor, model_type, is_hyak):
 
     '''
     assert type(model_type) == str, 'model_type must be of type string'
-    assert type(is_hyak) == bool, 'is_hyak must be of type bool'
+    assert type(is_hyak) == int, 'is_hyak must be of type int'
     assert type(epochs) == int, 'epochs must be of type int'
     assert type(reduction_factor) == int, 'reduction_factor must of type int'
     assert type(learning_rate) == float, 'learning_rate must be of type float'
@@ -81,6 +81,7 @@ def run_model(learning_rate, epochs, reduction_factor, model_type, is_hyak):
     assert reduction_factor > 0, 'reduction_factor must greater than 0'
     assert epochs > 0, 'epochs must greater than 0'
 
+    is_hyak = is_hyak > 0
     path = create_path(is_hyak)
     operations = {
         '1': lambda: train(path, learning_rate=learning_rate, epochs=epochs,
@@ -102,6 +103,8 @@ def run_model(learning_rate, epochs, reduction_factor, model_type, is_hyak):
 
 
 if __name__ == '__main__':
+    path = os.path.abspath(__file__)[:-8]
+    os.chdir(path)
     try:
         run_model(*get_params())
     except Exception:

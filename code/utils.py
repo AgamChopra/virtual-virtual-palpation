@@ -58,8 +58,8 @@ def norm(x, mode='min-max', epsilon=1E-9):
 def show_images(in_data, num_samples=9, cols=3):
     data = torch.zeros(in_data.shape, requires_grad=False)
 
-    for i in range(in_data.shape[1]):
-        data[:, i] = norm(in_data[:, i].detach().cpu())
+    data[:, :-1] = in_data[:, :-1].detach().cpu()
+    data[:, -1] = norm(in_data[:, -1]).detach().cpu()
 
     data = data[..., int(data.shape[-1]/2)]
 

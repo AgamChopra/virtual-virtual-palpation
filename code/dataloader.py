@@ -95,7 +95,7 @@ class train_dataloader():
 
         run(max_id, HYAK, f_pref)
 
-        with open('./stiff.json', 'r') as json_file:
+        with open('./logs/stiff.json', 'r') as json_file:
             stiff_vals = json.load(json_file)
 
         self.MAX_VAL, self.MIN_VAL = stiff_vals['MAX'], stiff_vals['MIN']
@@ -151,7 +151,7 @@ class val_dataloader():
         self.id = 0
         self.max_id = len(pid)
         self.batch = 1
-        with open('./stiff.json', 'r') as json_file:
+        with open('./logs/stiff.json', 'r') as json_file:
             stiff_vals = json.load(json_file)
         self.MAX_VAL, self.MIN_VAL = stiff_vals['MAX'], stiff_vals['MIN']
 
@@ -177,7 +177,7 @@ class test_dataloader():
         self.id = 0
         self.max_id = len(pid)
         self.batch = 1
-        with open('./stiff.json', 'r') as json_file:
+        with open('./logs/stiff.json', 'r') as json_file:
             stiff_vals = json.load(json_file)
         self.MAX_VAL, self.MIN_VAL = stiff_vals['MAX'], stiff_vals['MIN']
 

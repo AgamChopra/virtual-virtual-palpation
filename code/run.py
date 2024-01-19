@@ -58,7 +58,7 @@ def train(path, learning_rate=1E-4, epochs=500, hyak=True,
     None.
 
     '''
-    module = Trainer(checkpoint_path=path, model=model_type,
+    module = Trainer(checkpoint_path=path, model_type=model_type,
                      dataloader=train_dataloader(HYAK=hyak),
                      learning_rate=learning_rate, n=n)
     module.optimize(epochs=epochs, HYAK=hyak,
@@ -86,7 +86,7 @@ def infer(path, dataloader, n=4, model_type='unet'):
     None.
 
     '''
-    module = Trainer(checkpoint_path=path, model=model_type,
+    module = Trainer(checkpoint_path=path, model_type=model_type,
                      dataloader=dataloader, n=n)
     module.validate(dataloader)
 

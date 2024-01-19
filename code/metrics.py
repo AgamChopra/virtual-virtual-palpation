@@ -35,7 +35,7 @@ def run(max_id, HYAK=False, FILE_PREFIX='STIFF_'):
 
     result_dict = get_vals(max_id, path, FILE_PREFIX)
 
-    with open('./stiff.json', 'w') as file:
+    with open('./logs/stiff.json', 'w') as file:
         json.dump(result_dict, file)
 
 
