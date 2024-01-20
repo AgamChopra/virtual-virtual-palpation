@@ -78,7 +78,7 @@ def load_batch_dataset(path, idx_list, mn=0., mx=1., nrm=True):
 
 class train_dataloader():
     def __init__(self, batch=1, max_id=43, post=False,
-                 augment=True, HYAK=True, aug_thresh=0.05,
+                 augment=True, aug_thresh=0.05,
                  workers=4, f_pref='STIFF_'):
         self.executor = concurrent.futures.ThreadPoolExecutor(
             max_workers=workers)
@@ -90,12 +90,11 @@ class train_dataloader():
         self.idx = None
         self.Flag = True
         self.post = post
-        self.path = '/gscratch/kurtlab/vvp/data/train' if HYAK \
-            else '/home/agam/Downloads/ME599/train'
+        self.path = './.plugins/data/train'
 
-        run(max_id, HYAK, f_pref)
+        run(max_id, f_pref)
 
-        with open('./logs/stiff.json', 'r') as json_file:
+        with open('./.logs/stiff.json', 'r') as json_file:
             stiff_vals = json.load(json_file)
 
         self.MAX_VAL, self.MIN_VAL = stiff_vals['MAX'], stiff_vals['MIN']
@@ -144,14 +143,13 @@ class train_dataloader():
 
 class val_dataloader():
     def __init__(self,
-                 pid=[49, 50, 51, 52, 53], batch=1, HYAK=True):
-        self.path = '/gscratch/kurtlab/vvp/data/val' if HYAK \
-            else '/home/agam/Downloads/ME599/val'
+                 pid=[49, 50, 51, 52, 53], batch=1):
+        self.path = './.plugins/data/val'
         self.pid = pid
         self.id = 0
         self.max_id = len(pid)
         self.batch = 1
-        with open('./logs/stiff.json', 'r') as json_file:
+        with open('./.logs/stiff.json', 'r') as json_file:
             stiff_vals = json.load(json_file)
         self.MAX_VAL, self.MIN_VAL = stiff_vals['MAX'], stiff_vals['MIN']
 
@@ -170,14 +168,13 @@ class val_dataloader():
 
 class test_dataloader():
     def __init__(self,
-                 pid=[44, 45, 46, 47, 48], batch=1, HYAK=True):
-        self.path = '/gscratch/kurtlab/vvp/data/test' if HYAK \
-            else '/home/agam/Downloads/ME599/test'
+                 pid=[44, 45, 46, 47, 48], batch=1):
+        self.path = './.plugins/data/test'
         self.pid = pid
         self.id = 0
         self.max_id = len(pid)
         self.batch = 1
-        with open('./logs/stiff.json', 'r') as json_file:
+        with open('./.logs/stiff.json', 'r') as json_file:
             stiff_vals = json.load(json_file)
         self.MAX_VAL, self.MIN_VAL = stiff_vals['MAX'], stiff_vals['MIN']
 
@@ -195,7 +192,7 @@ class test_dataloader():
 
 
 if __name__ == '__main__':
-    a = train_dataloader(HYAK=False, post=True, augment=False)
+    a = train_dataloader(post=True, augment=False)
     for i in range(43):
         x = a.load_batch()
         show_images(torch.cat(x, dim=1).view(6, 1, SIZE, SIZE, SIZE), 6, 3)

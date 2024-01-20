@@ -25,22 +25,20 @@ def get_vals(max_id, path=None, FILE_PREFIX='STIFF_'):
     return {'MAX': max(max_vals), 'MIN': min(min_vals)}
 
 
-def run(max_id, HYAK=False, FILE_PREFIX='STIFF_'):
+def run(max_id, FILE_PREFIX='STIFF_'):
     assert isinstance(
         max_id, int), f"max_id Type mismatch! Expecting int, got \
         {type(max_id)} instead!"
 
-    path = '/gscratch/kurtlab/vvp/data/train' if HYAK\
-        else '/home/agam/Downloads/ME599/train'
+    path = './.plugins/data/train'
 
     result_dict = get_vals(max_id, path, FILE_PREFIX)
 
-    with open('./logs/stiff.json', 'w') as file:
+    with open('./.logs/stiff.json', 'w') as file:
         json.dump(result_dict, file)
 
 
 if __name__ == '__main__':
     FILE_PREFIX = 'STIFF_'
-    HYAK = False
     max_id = 43
-    run(max_id, HYAK, FILE_PREFIX)
+    run(max_id, FILE_PREFIX)

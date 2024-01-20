@@ -14,25 +14,6 @@ from models import get_models
 from hyperparameter_search import FetchBestHyperparameters
 
 
-def create_path(hyak):
-    '''
-    TO DO...
-
-    Parameters
-    ----------
-    hyak : TYPE
-        DESCRIPTION.
-
-    Returns
-    -------
-    TYPE
-        DESCRIPTION.
-
-    '''
-    return '/gscratch/kurtlab/vvp/code' if hyak else \
-           '/home/agam/Documents/git-files/virtual-virtual-palpation/code/'
-
-
 def train(path, learning_rate=1E-4, epochs=500, hyak=True,
           n=4, model_type='unet'):
     '''
@@ -59,11 +40,10 @@ def train(path, learning_rate=1E-4, epochs=500, hyak=True,
 
     '''
     module = Trainer(checkpoint_path=path, model_type=model_type,
-                     dataloader=train_dataloader(HYAK=hyak),
+                     dataloader=train_dataloader(),
                      learning_rate=learning_rate, n=n)
-    module.optimize(epochs=epochs, HYAK=hyak,
-                    val_loader=val_dataloader(HYAK=hyak))
-    module.validate(val_dataloader(HYAK=hyak))
+    module.optimize(epochs=epochs, val_loader=val_dataloader())
+    module.validate(val_dataloader())
 
 
 def infer(path, dataloader, n=4, model_type='unet'):

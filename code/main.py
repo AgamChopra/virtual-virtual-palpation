@@ -13,7 +13,7 @@ import json
 import random
 import torch
 
-from run import train, infer, create_path, get_optimal_params
+from run import train, infer, get_optimal_params
 from dataloader import val_dataloader, test_dataloader
 
 
@@ -45,7 +45,7 @@ def get_params():
     '''
     Load parameters from a JSON file.
     '''
-    with open('./logs/parameters.json', 'r') as json_file:
+    with open('./.logs/parameters.json', 'r') as json_file:
         return json.load(json_file).values()
 
 
@@ -82,7 +82,7 @@ def run_model(learning_rate, epochs, reduction_factor, model_type, is_hyak):
     assert epochs > 0, 'epochs must greater than 0'
 
     is_hyak = is_hyak > 0
-    path = create_path(is_hyak)
+    path = './.plugins/parameters'
     operations = {
         '1': lambda: train(path, learning_rate=learning_rate, epochs=epochs,
                            hyak=is_hyak, n=reduction_factor,
