@@ -19,4 +19,4 @@ Elastograms provide valuable information about the mechanical properties of tiss
     <br><i>Fig. Stiffness map output of 3D-UNet model.</i><br><br>
 </p>
 
-<p><a href="https://raw.githubusercontent.com/AgamChopra/virtual-virtual-palpation/main/LICENSE" target="blank">[GNU GPL3 License]</a></p>
+<p><a href="https://raw.githubusercontent.com/AgamChopra/virtual-virtual-palpation/main/LICENSE" target="blank">[GNU AGPL3 License]</a></p>
