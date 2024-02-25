@@ -70,7 +70,7 @@ def show_images(in_data, num_samples=9, cols=3):
         plt.subplot(int(num_samples/cols) + 1, cols, i + 1)
         plt.axis('off')
         if img.shape[0] == 1:
-            plt.imshow(img[0], cmap='viridis')
+            plt.imshow(img[0], cmap='turbo')
         else:
             plt.imshow(img.permute(1, 2, 0))
     plt.show()
