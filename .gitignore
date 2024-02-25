@@ -4,7 +4,7 @@ __pycache__/
 *$py.class
 
 # Plugins
-./plugins/
+.plugins/
 
 # PTH files
 *.pth

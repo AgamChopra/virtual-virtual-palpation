@@ -5,8 +5,6 @@ Created on October 2023
 @website: https://agamchopra.github.io/
 @affiliation: KurtLab, Department of Mechanical Engineering,
               University of Washington, Seattle, USA
-@Refs:
-    - PyTorch 2.0 stable documentation @ https://pytorch.org/docs/stable/
 """
 import os
 import json
