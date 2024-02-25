@@ -102,6 +102,18 @@ class train_dataloader():
     def randomize(self):
         sample_len = self.max_id + 1
         self.idx = random.sample(range(0, sample_len), sample_len)
+    
+    def load_batch_dataset_async(self, idx_list):
+        futures = []
+
+        for idx in idx_list:
+            future = self.executor.submit(
+                load_patient, self.path, idx, self.nrm,
+                self.MIN_VAL, self.MAX_VAL)
+            futures.append(future)
+
+        results = [future.result() for future in futures]
+        return torch.cat(results, dim=0)
 
     def load_batch(self, post=False):
         if self.Flag:  # only runs the first time
@@ -127,18 +139,6 @@ class train_dataloader():
             batch_raw = augment_batch(batch_raw)
 
         return (batch_raw[:, 0:5], batch_raw[:, 5:6])
-
-    def load_batch_dataset_async(self, idx_list):
-        futures = []
-
-        for idx in idx_list:
-            future = self.executor.submit(
-                load_patient, self.path, idx, self.nrm,
-                self.MIN_VAL, self.MAX_VAL)
-            futures.append(future)
-
-        results = [future.result() for future in futures]
-        return torch.cat(results, dim=0)
 
 
 class val_dataloader():
