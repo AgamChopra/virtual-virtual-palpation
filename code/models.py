@@ -10,7 +10,7 @@ Created on October 2023
 """
 import torch
 import torch.nn as nn
-from utils import pad3d, attention_grid, Block, Block2
+from utils import pad3d, attention_grid, attention_grid2, Block, Block2
 
 
 # UNet
@@ -95,21 +95,10 @@ class Unet(nn.Module):
         return y
 
 
-def test_unet(device='cpu', N=1):
-    a = torch.ones((N, 5, 150, 150, 150), device=device)
-
-    model = Unet(5, 1, 32).to(device)
-
-    b = model(a)
-
-    print(a.shape)
-    print(b.shape)
-
-
 # Attention-UNet
 class AUnet(nn.Module):
     def __init__(self, CH_IN=5, CH_OUT=1, n=1, p=0.3,
-                 attention_embed=128, mode='trilinear'):
+                 mode='trilinear'):
         super(AUnet, self).__init__()
         print('Model size factor =', int(64/n))
         self.drop = nn.Dropout3d(p)
@@ -155,15 +144,15 @@ class AUnet(nn.Module):
 
         self.attention3 = attention_grid(
             int(128/n), int(128/n), int(128/n),
-            embd_dim=attention_embed, mode=mode)
+            mode=mode)
 
         self.attention2 = attention_grid(
             int(256/n), int(256/n), int(256/n),
-            embd_dim=attention_embed, mode=mode)
+            mode=mode)
 
         self.attention1 = attention_grid(
             int(512/n), int(512/n), int(512/n),
-            embd_dim=attention_embed, mode=mode)
+            mode=mode)
 
     def forward(self, x, pad2size=188, get_maps=False):
         assert len(x.shape) == 5, "Expected input to be a 5D tensor of shap\
@@ -207,18 +196,6 @@ class AUnet(nn.Module):
             return y
 
 
-def test_aunet(device='cpu', N=1):
-    a = torch.ones((N, 5, 150, 150, 150), device=device)
-
-    model = AUnet(5, 1, 32, 0.3, 8).to(device)
-
-    b = model(a)
-
-    print(model.device())
-    print(a.shape)
-    print(b.shape)
-
-
 # Tau_Net: Threshold-Attention-UNet
 class TAUnet(nn.Module):
     def __init__(self, in_c, out_c, embd_dim, n=1, mode='trilinear'):
@@ -258,16 +235,16 @@ class TAUnet(nn.Module):
         self.out = nn.Conv3d(in_channels=int(
             1 * n), out_channels=out_c, kernel_size=1)
 
-        self.skip1 = attention_grid(
+        self.skip1 = attention_grid2(
             int(1 * n), int(1 * n), int(1 * n), embd_dim)
 
-        self.skip2 = attention_grid(
+        self.skip2 = attention_grid2(
             int(2 * n), int(2 * n), int(2 * n), embd_dim)
 
-        self.skip3 = attention_grid(
+        self.skip3 = attention_grid2(
             int(4 * n), int(4 * n), int(4 * n), embd_dim)
 
-        self.skip4 = attention_grid(
+        self.skip4 = attention_grid2(
             int(8 * n), int(8 * n), int(8 * n), embd_dim)
 
         self.attention_mask = None
@@ -337,15 +314,34 @@ def get_models(CH_IN, CH_OUT, n):
     return models
 
 
+def test_models(devices=['cpu'], N=1):
+    a = torch.ones((N, 2, 150, 150, 150))
+    emb = torch.ones((N, 64))
+    models = get_models(2, 1, 64)
+
+    unet = models['unet']()
+    aunet = models['aunet']()
+    taunet = models['taunet']()
+
+    try:
+        [unet.to(device)(a.to(device)) for device in devices]
+        print('\u2714 unet passed')
+    except Exception:
+        print('\u274c unet failed')
+
+    try:
+        [aunet.to(device)(a.to(device)) for device in devices]
+        print('\u2714 aunet passed')
+    except Exception:
+        print('\u274c aunet failed')
+
+    try:
+        [taunet.to(device)(a.to(device), emb.to(device)) for device in devices]
+        print('\u2714 taunet passed')
+    except Exception:
+        print('\u274c taunet failed')
+
+
 if __name__ == '__main__':
     devices = ['cpu', 'cuda']
-    try:
-        [test_unet(device, 1) for device in devices]
-        print('###unet passed')
-    except Exception:
-        print('***unet failed')
-    try:
-        [test_aunet(device, 1) for device in devices]
-        print('###aunet passed')
-    except Exception:
-        print('***aunet failed')
+    test_models(devices=devices)

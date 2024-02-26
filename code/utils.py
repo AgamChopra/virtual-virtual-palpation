@@ -214,7 +214,7 @@ class Block2(nn.Module):
 
 
 class attention_grid(nn.Module):
-    def __init__(self, x_c, g_c, i_c, embd_dim, stride=3, mode='trilinear'):
+    def __init__(self, x_c, g_c, i_c, stride=3, mode='trilinear'):
         super(attention_grid, self).__init__()
         self.input_filter = nn.utils.spectral_norm(nn.Conv3d(
             in_channels=x_c, out_channels=i_c, kernel_size=1, stride=stride,
@@ -236,6 +236,50 @@ class attention_grid(nn.Module):
 
     def forward(self, x, g):
         a = nn.functional.relu(self.tfilt(self.input_filter(x)))
+        b = self.gate_filter(g)
+
+        if a.shape[-1] < b.shape[-1]:
+            a = pad3d(a, b)
+
+        elif a.shape[-1] > b.shape[-1]:
+            b = pad3d(b, a)
+
+        w = torch.sigmoid(self.psi(nn.functional.relu(a + b)))
+        w = nn.functional.interpolate(w, size=x.shape[2:], mode=self.mode)
+
+        y = x * w
+
+        return y, w
+
+
+class attention_grid2(nn.Module):
+    def __init__(self, x_c, g_c, i_c, embd_dim, stride=3, mode='trilinear'):
+        super(attention_grid2, self).__init__()
+        self.input_filter = nn.utils.spectral_norm(nn.Conv3d(
+            in_channels=x_c, out_channels=i_c, kernel_size=1, stride=stride,
+            bias=False))
+
+        self.gate_filter = nn.utils.spectral_norm(nn.Conv3d(
+            in_channels=g_c, out_channels=i_c, kernel_size=1, stride=1,
+            bias=True))
+
+        self.mlp = nn.Sequential(nn.utils.spectral_norm(
+            nn.Linear(embd_dim, i_c, bias=False)), nn.ReLU())
+
+        self.tfilt = nn.utils.spectral_norm(nn.Conv3d(
+            in_channels=i_c, out_channels=i_c, kernel_size=1, stride=1,
+            bias=False))
+
+        self.psi = nn.utils.spectral_norm(
+            nn.Conv3d(in_channels=i_c, out_channels=1, kernel_size=1, stride=1,
+                      bias=True))
+
+        self.mode = mode
+
+    def forward(self, x, g, t):
+        t = self.mlp(t)
+        t = t[(..., ) + (None, ) * 3]
+        a = nn.functional.relu(self.tfilt(self.input_filter(x) + t))
         b = self.gate_filter(g)
 
         if a.shape[-1] < b.shape[-1]:

@@ -15,7 +15,6 @@ import torch
 from torchio.transforms import RandomFlip, RandomAffine
 
 from utils import norm, pad3d, show_images
-# from metrics import run
 
 SIZE = 32 * 6
 
@@ -74,7 +73,7 @@ def load_batch_dataset(path, idx_list, mn=0., mx=1., nrm=True, wkrs=2):
     return torch.cat(data, dim=0)
 
 
-# workers has to be >= 2
+# workers has to be >= 2, 2 gives the best perfomance in my testing...
 class train_dataloader():
     def __init__(self, batch=1, max_id=43, post=False,
                  augment=True, aug_thresh=0.05,
@@ -91,12 +90,9 @@ class train_dataloader():
         self.idx = None
         self.Flag = True
         self.post = post
-        self.path = os.path.join(
-            os.path.abspath(__file__)[:-19], '.plugins/data/train')
-        # run(max_id, f_pref)
+        self.path = '.plugins/data/train'
 
-        with open(os.path.join(os.path.abspath(__file__)[:-19],
-                               '.logs/stiff.json'), 'r') as json_file:
+        with open('.logs/stiff.json', 'r') as json_file:
             stiff_vals = json.load(json_file)
 
         self.MAX_VAL, self.MIN_VAL = stiff_vals['MAX'], stiff_vals['MIN']
@@ -147,14 +143,12 @@ class val_dataloader():
     def __init__(self,
                  pid=[49, 50, 51, 52, 53], batch=1, workers=2):
         self.workers = workers
-        self.path = os.path.join(os.path.abspath(
-            __file__)[:-19], '.plugins/data/val')
+        self.path = '.plugins/data/val'
         self.pid = pid
         self.id = 0
         self.max_id = len(pid)
         self.batch = 1
-        with open(os.path.join(os.path.abspath(__file__)[:-19],
-                               '.logs/stiff.json'), 'r') as json_file:
+        with open('.logs/stiff.json', 'r') as json_file:
             stiff_vals = json.load(json_file)
         self.MAX_VAL, self.MIN_VAL = stiff_vals['MAX'], stiff_vals['MIN']
 
@@ -175,14 +169,12 @@ class test_dataloader():
     def __init__(self,
                  pid=[44, 45, 46, 47, 48], batch=1, workers=2):
         self.workers = workers
-        self.path = os.path.join(os.path.abspath(
-            __file__)[:-19], '.plugins/data/test')
+        self.path = '.plugins/data/test'
         self.pid = pid
         self.id = 0
         self.max_id = len(pid)
         self.batch = 1
-        with open(os.path.join(os.path.abspath(__file__)[:-19],
-                               '.logs/stiff.json'), 'r') as json_file:
+        with open('.logs/stiff.json', 'r') as json_file:
             stiff_vals = json.load(json_file)
         self.MAX_VAL, self.MIN_VAL = stiff_vals['MAX'], stiff_vals['MIN']
 
@@ -201,11 +193,10 @@ class test_dataloader():
 
 if __name__ == '__main__':
     from tqdm import trange
-    path = os.path.abspath(__file__)[:-13]
+    path = os.path.abspath(__file__)[:-19]
     print(path)
     os.chdir(path)
-    a = os.path.join(os.path.join(os.path.abspath(__file__)[
-                     :-19], '.plugins/data/train'), 'STIFF_0.nii')
+    a = os.path.join(os.path.join(path, '.plugins/data/train'), 'STIFF_0.nii')
     print(a, os.path.exists(a))
 
     post = False
@@ -213,16 +204,20 @@ if __name__ == '__main__':
     max_id = 2
     workers = 2
 
-    a = train_dataloader(post=post, augment=False,
-                         max_id=max_id, workers=workers, batch=batch)
-    for i in trange(100):
-        x = a.load_batch()
-        if post:
-            try:
-                show_images(torch.cat(x, dim=1).view(
-                    6*batch, 1, SIZE, SIZE, SIZE), 6*batch, 6)
-            except Exception:
-                show_images(torch.cat(x, dim=1).view(
-                    6, 1, SIZE, SIZE, SIZE), 6, 6)
-            if (i+1) % 3 == 0:
-                print('.......................')
+    try:
+        a = train_dataloader(post=post, augment=False,
+                             max_id=max_id, workers=workers, batch=batch)
+        for i in trange(100):
+            x = a.load_batch()
+            if post:
+                try:
+                    show_images(torch.cat(x, dim=1).view(
+                        6*batch, 1, SIZE, SIZE, SIZE), 6*batch, 6)
+                except Exception:
+                    show_images(torch.cat(x, dim=1).view(
+                        6, 1, SIZE, SIZE, SIZE), 6, 6)
+                if (i+1) % 3 == 0:
+                    print('.......................')
+        print('\n\u2714 Train dataloader passed')
+    except Exception:
+        print('\n\u274c Train dataloader failed')
