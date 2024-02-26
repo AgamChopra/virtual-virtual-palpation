@@ -40,7 +40,7 @@ torch.manual_seed(SEED)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
-MAX_ID = 2  # 43
+MAX_ID = 43
 
 
 def get_params():
