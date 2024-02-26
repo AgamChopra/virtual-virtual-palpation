@@ -15,9 +15,8 @@ from utils import per_error, ssim_loss, PSNR, getPositionEncoding, compose
 from dataloader import train_dataloader, val_dataloader
 
 
-lr_bounds, lambda1_bounds, lambda2_bounds, lambda3_bounds,\
-    lambda4_bounds, stepsize_bounds, gamma_bounds = (1E-1, 1E-6), (0, 10),
-(0, 10), (0, 10), (0, 10), (10, 150), (1E-1, 1E-4)
+lr_bounds, lambda1_bounds, lambda2_bounds, lambda3_bounds, lambda4_bounds, stepsize_bounds, gamma_bounds = (
+    1E-1, 1E-6), (0, 10), (0, 10), (0, 10), (0, 10), (10, 150), (1E-1, 1E-4)
 parameter_bounds = torch.tensor([lr_bounds, lambda1_bounds, lambda2_bounds,
                                 lambda3_bounds, lambda4_bounds,
                                 stepsize_bounds, gamma_bounds])

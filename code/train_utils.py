@@ -17,7 +17,7 @@ from tqdm import tqdm, trange
 from matplotlib import pyplot as plt
 
 from models import get_models
-from utils import show_images, per_error, ssim_loss, PSNR, mask_generator,\
+from utils import show_images, per_error, ssim_loss, PSNR, mask_generator, \
     compose, getPositionEncoding
 
 
@@ -72,9 +72,9 @@ class Trainer(nn.Module):
         super(Trainer, self).__init__()
         self.model_type = model_type
         models = get_models(CH_IN, CH_OUT, n)
-        model = models.get(
-            self.model_type) if self.model_type in models else exit(
-                f'{self.model_type} not implemented!')
+        model = models[self.model_type](
+            ) if self.model_type in models else exit(
+            f'{self.model_type} not implemented!')
         self.checkpoint_path = checkpoint_path
         self.device = device
         self.model = torch.compile(model).to(device)
